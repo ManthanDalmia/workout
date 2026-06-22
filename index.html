@@ -2,7 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D1413">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Workout">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="apple-touch-icon" href="icon-180.png">
 <title>Training Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -189,6 +197,49 @@
   .gbtn:hover{border-color:var(--aero);box-shadow:0 0 18px -6px rgba(51,214,199,.5)}
   .gbtn svg{width:18px;height:18px;color:var(--aero)}
   .gate .err{color:var(--lift-text);font-size:.8rem;margin-top:14px;min-height:1em}
+  /* ===== iPhone / PWA polish + livelier UI ===== */
+  body{-webkit-tap-highlight-color:transparent}
+  /* safe areas (notch / home indicator) */
+  .wrap{
+    padding-left:max(clamp(16px,4vw,40px), env(safe-area-inset-left));
+    padding-right:max(clamp(16px,4vw,40px), env(safe-area-inset-right));
+    padding-top:calc(clamp(16px,4vw,40px) + env(safe-area-inset-top));
+    padding-bottom:calc(clamp(16px,4vw,40px) + env(safe-area-inset-bottom));
+  }
+  /* bigger touch targets */
+  .setrow .rm{width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;border-radius:8px}
+  .cal-nav button{width:40px;height:40px}
+  /* press feedback */
+  .btn,.split-btn,.gbtn,.cal-cell,.cal-nav button,.addset,.uselast,.acc>summary{transition:transform .08s ease, border-color .15s, background .15s, color .15s, box-shadow .15s}
+  .btn:active,.split-btn:active,.gbtn:active,.cal-cell:active:not(.empty),.cal-nav button:active,.addset:active,.uselast:active{transform:scale(.96)}
+
+  /* stats strip */
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .stat{border:1px solid var(--line);background:var(--paper-2);border-radius:12px;padding:13px 14px;box-shadow:var(--shadow)}
+  .stat .v{font-family:"Archivo",sans-serif;font-weight:900;font-size:1.55rem;line-height:1;background:linear-gradient(150deg,var(--lift-text),var(--lift));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .v.cy{background:linear-gradient(150deg,var(--aero-text),var(--aero));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat .k{font-family:"JetBrains Mono",monospace;font-size:.58rem;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-faint);margin-top:6px}
+
+  /* last-session reference while logging */
+  .lex-last{margin:0 14px 2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--ink-faint)}
+  .lex-last b{color:var(--aero-text);font-weight:500}
+  .uselast{border:1px solid var(--aero-line);background:var(--aero-bg);color:var(--aero-text);border-radius:7px;padding:.2rem .5rem;font-family:"JetBrains Mono",monospace;font-size:.62rem;cursor:pointer}
+
+  /* motion */
+  @keyframes cellIn{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+  .cal-grid .cal-cell{animation:cellIn .2s ease both}
+  @keyframes todayPulse{0%,100%{box-shadow:0 0 0 2px var(--aero),0 0 13px -4px rgba(51,214,199,.5)}50%{box-shadow:0 0 0 2px var(--aero),0 0 22px 0 rgba(51,214,199,.8)}}
+  .cal-cell.today:not(.logged){animation:cellIn .2s ease both, todayPulse 2.6s ease-in-out .2s infinite}
+
+  /* iOS: inputs ≥16px to stop Safari auto-zoom on focus */
+  @media (max-width:680px){
+    .setrow input, .field input, input[type=date], input[type=text], input[type=number]{font-size:16px}
+    .stat .v{font-size:1.35rem}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .cal-grid .cal-cell,.cal-cell.today:not(.logged){animation:none}
+    .btn,.split-btn,.gbtn,.cal-cell,.cal-nav button,.addset,.uselast,.acc>summary{transition:none}
+  }
 </style>
 </head>
 <body>
@@ -209,6 +260,7 @@
 
   <!-- TRACKER (default, first) -->
   <section id="tracker">
+    <div class="stats" id="stats"></div>
     <div class="cal">
       <div class="cal-head">
         <div class="cal-title" id="calTitle">—</div>
@@ -399,6 +451,17 @@ service cloud.firestore {
   function defaultSets(t){ const m=String(t).match(/^\s*(\d+)/); return m?Math.min(parseInt(m[1],10),8):3; }
   function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function entryFor(date){ return LOGS.find(e=>e.date===date); }
+  function isNum(x){ return x!=='' && x!=null && !isNaN(parseFloat(x)); }
+  function fmtSets(sets){ return (sets||[]).map(s=>(s.w||'–')+'×'+(s.r||'–')).join(' · '); }
+  function fmtShort(s){ const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+  function sessionVolume(entry){ let v=0; (entry.exercises||[]).forEach(ex=>(ex.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)) v+=parseFloat(s.w)*parseFloat(s.r); })); return v; }
+  function lastSessionBefore(key,date){ return LOGS.filter(e=>e.split===key && e.date<date).sort((a,b)=>b.date.localeCompare(a.date))[0]||null; }
+
+  // ---- wake lock (keep screen on mid-workout) ----
+  let wakeLock=null;
+  async function requestWake(){ try{ if('wakeLock' in navigator && document.visibilityState==='visible'){ wakeLock=await navigator.wakeLock.request('screen'); } }catch(e){} }
+  async function releaseWake(){ try{ if(wakeLock){ await wakeLock.release(); wakeLock=null; } }catch(e){} }
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && document.querySelector('#logForm .lex')) requestWake(); });
 
   // ---- storage layer ----
   let localOK = true;
@@ -421,7 +484,9 @@ service cloud.firestore {
         const fs = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-firestore.js`);
         const au = await import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-auth.js`);
         const app = appMod.initializeApp(FIREBASE_CONFIG);
-        const db = fs.getFirestore(app);
+        let db;
+        try{ db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
+        catch(err){ console.log('Firestore persistence unavailable, using default cache:', err); db = fs.getFirestore(app); }
         const auth = au.getAuth(app);
         fb = { fs, db, au, auth };
         try{ await au.getRedirectResult(auth); }catch(e){ console.error(e); } // popup-blocked fallback
@@ -543,20 +608,32 @@ service cloud.firestore {
       '<button type="button" class="rm" aria-label="Remove set">×</button></div>';
   }
 
+  function fillSets(card, sets){
+    const box=card.querySelector('.sets'); const add=box.querySelector('.addset');
+    box.querySelectorAll('.setrow').forEach(r=>r.remove());
+    (sets.length?sets:[{w:'',r:''}]).forEach((s,i)=>add.insertAdjacentHTML('beforebegin', setRow(i+1, s.w, s.r)));
+    wireRemoves(box);
+  }
+
   function buildForm(key, existing){
     const sp=SPLITS[key];
+    const last=lastSessionBefore(key, selectedDate);
     let h='';
     sp.ex.forEach(ex=>{
       const saved=existing?existing.find(x=>x.n===ex.n):null;
       const sets=(saved&&saved.sets&&saved.sets.length)?saved.sets:Array.from({length:defaultSets(ex.t)},()=>({w:'',r:''}));
-      h+='<div class="lex" data-name="'+esc(ex.n)+'">'+
+      const lastEx=last?(last.exercises||[]).find(x=>x.n===ex.n):null;
+      const lastLine = lastEx ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc(fmtSets(lastEx.sets))+'</b> <button type="button" class="uselast">use</button></div>' : '';
+      h+='<div class="lex" data-name="'+esc(ex.n)+'"'+(lastEx?' data-last=\''+esc(JSON.stringify(lastEx.sets))+'\'':'')+'>'+
            '<div class="lex-head"><div class="lex-name">'+esc(ex.n)+'</div><div class="lex-target">target '+esc(ex.t)+'</div></div>'+
+           lastLine+
            '<details class="lex-cues"><summary></summary><div class="cue">'+esc(ex.c)+'</div></details>'+
            '<div class="sets">'+ sets.map((s,i)=>setRow(i+1,s.w,s.r)).join('') +
              '<button type="button" class="addset">+ add set</button>'+
            '</div></div>';
     });
     h+='<div class="log-actions"><button type="button" class="btn" id="saveBtn">Save session</button>'+
+       (last?'<button type="button" class="btn ghost" id="prefillBtn">Prefill from '+esc(fmtShort(last.date))+'</button>':'')+
        (existing?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
        '<span class="log-status" id="logStatus"></span></div>';
     const form=document.getElementById('logForm'); form.innerHTML=h;
@@ -566,9 +643,14 @@ service cloud.firestore {
       const addBtn=card.querySelector('.addset');
       addBtn.addEventListener('click',()=>{ const n=setsBox.querySelectorAll('.setrow').length+1; addBtn.insertAdjacentHTML('beforebegin', setRow(n,'','')); wireRemoves(setsBox); });
       wireRemoves(setsBox);
+      const use=card.querySelector('.uselast');
+      if(use) use.addEventListener('click',()=>{ try{ fillSets(card, JSON.parse(card.dataset.last)); }catch(e){} });
     });
+    const pf=document.getElementById('prefillBtn');
+    if(pf) pf.addEventListener('click',()=>{ form.querySelectorAll('.lex[data-last]').forEach(card=>{ try{ fillSets(card, JSON.parse(card.dataset.last)); }catch(e){} }); });
     document.getElementById('saveBtn').addEventListener('click',()=>saveSession(key));
     const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); });
+    requestWake();
   }
 
   function wireRemoves(setsBox){
@@ -593,7 +675,7 @@ service cloud.firestore {
     });
     if(!exercises.length){ status.style.color='var(--lift)'; status.textContent='Add at least one set first.'; return; }
     const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, exercises };
-    try{ await persist(entry); status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)'); }
+    try{ await persist(entry); status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)'); releaseWake(); }
     catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; }
   }
 
@@ -609,7 +691,22 @@ service cloud.firestore {
     }).join('');
   }
 
-  function renderAll(){ renderCalendar(); renderDayPanel(); }
+  function renderStats(){
+    const el=document.getElementById('stats'); if(!el) return;
+    const t=new Date(); const mk=t.getFullYear()+'-'+pad(t.getMonth()+1);
+    const month=LOGS.filter(e=>(e.date||'').startsWith(mk)).length;
+    const wd=(t.getDay()+6)%7; const monday=new Date(t); monday.setDate(t.getDate()-wd);
+    const wkStart=iso(monday), wkEnd=iso(t);
+    const weekLogs=LOGS.filter(e=>e.date>=wkStart && e.date<=wkEnd);
+    let vol=0; weekLogs.forEach(e=>vol+=sessionVolume(e));
+    const volK = vol>=1000 ? (vol/1000).toFixed(1)+'k' : Math.round(vol);
+    el.innerHTML =
+      '<div class="stat"><div class="v">'+month+'</div><div class="k">This month</div></div>'+
+      '<div class="stat"><div class="v cy">'+weekLogs.length+'</div><div class="k">This week</div></div>'+
+      '<div class="stat"><div class="v">'+volK+'</div><div class="k">Volume · wk (kg)</div></div>';
+  }
+
+  function renderAll(){ renderStats(); renderCalendar(); renderDayPanel(); }
 
   // ---- wire nav ----
   document.getElementById('prevM').addEventListener('click',()=>{ viewM--; if(viewM<0){viewM=11;viewY--;} renderCalendar(); });
@@ -617,6 +714,9 @@ service cloud.firestore {
   document.getElementById('todayBtn').addEventListener('click',()=>{ const t=new Date(); viewY=t.getFullYear(); viewM=t.getMonth(); selectedDate=iso(t); renderCalendar(); renderDayPanel(); });
 
   renderRefSessions();
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW registration failed:', e)); });
+  }
   await initStore();
 })();
 </script>
