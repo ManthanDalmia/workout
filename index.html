@@ -374,6 +374,57 @@
   .toast .tt{font-family:"Archivo",sans-serif;font-weight:800;font-size:.92rem;color:var(--ink)}
   .toast .ts{font-size:.76rem;color:var(--ink-soft);margin-top:1px}
   @media (prefers-reduced-motion:reduce){ .toast{transition:opacity .2s} }
+
+  /* ===== generic card ===== */
+  .card{border:1px solid var(--line);background:var(--paper-2);border-radius:var(--radius);box-shadow:var(--shadow);padding:clamp(16px,3vw,22px)}
+
+  /* ===== stats: ring + streak ===== */
+  .stats{grid-template-columns:repeat(4,1fr)}
+  .ring-wrap{display:flex;align-items:center;gap:10px}
+  .ring{width:44px;height:44px;flex-shrink:0}
+  .ring .bg{fill:none;stroke:var(--line);stroke-width:5}
+  .ring .fg{fill:none;stroke:var(--aero);stroke-width:5;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dasharray .5s ease}
+  .ring-c{font-family:"Archivo",sans-serif;font-weight:900;font-size:.74rem;fill:var(--ink)}
+  .stat .v.fire{background:none;-webkit-background-clip:initial;background-clip:initial;color:var(--lift-text)}
+
+  /* ===== badges ===== */
+  .badges{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .badge{display:inline-flex;align-items:center;gap:5px;font-family:"JetBrains Mono",monospace;font-size:.62rem;border:1px solid var(--aero-line);background:var(--aero-bg);color:var(--aero-text);border-radius:999px;padding:.24rem .56rem}
+  .badge.warm{border-color:var(--lift-line);background:var(--lift-bg);color:var(--lift-text)}
+
+  /* ===== charts ===== */
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .seg button{border:none;background:var(--surface);color:var(--ink-faint);font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.03em;padding:.34rem .6rem;cursor:pointer;line-height:1}
+  .seg button.on{background:var(--aero);color:var(--on-lift)}
+  .prog-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .ex-select{font-family:"Archivo",sans-serif;font-weight:700;font-size:.95rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:.4rem .6rem;max-width:62%}
+  .prog-pr{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px}
+  .prog-pr .pr{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--ink-soft)}
+  .prog-pr .pr b{font-family:"Archivo",sans-serif;font-weight:900;font-size:1.05rem;color:var(--ink);display:block;margin-top:1px}
+  .prog-pr .pr b.cy{color:var(--aero-text)}
+  .chart{margin-top:8px}
+  .chart svg{width:100%;height:auto;display:block;overflow:visible}
+  .chart .cline{fill:none;stroke:var(--aero);stroke-width:2.2;stroke-linejoin:round;stroke-linecap:round;vector-effect:non-scaling-stroke}
+  .chart .carea{fill:var(--aero-bg);stroke:none}
+  .chart .cdot{fill:var(--lift);stroke:var(--paper-2);stroke-width:2;vector-effect:non-scaling-stroke}
+  .chart-x{display:flex;justify-content:space-between;font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--ink-faint);margin-top:4px}
+  .chart-empty{font-size:.85rem;color:var(--ink-faint);padding:22px 0;text-align:center}
+
+  /* ===== bodyweight ===== */
+  .bw-top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .bw-now{font-family:"Archivo",sans-serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--ink)}
+  .bw-now small{font-size:.9rem;font-weight:700;color:var(--ink-faint)}
+  .bw-delta{font-family:"JetBrains Mono",monospace;font-size:.74rem}
+  .bw-delta.dn{color:var(--aero-text)} .bw-delta.up{color:var(--lift-text)}
+  .bw-form{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  .bw-form input{font-family:"JetBrains Mono",monospace;font-size:.85rem;border:1px solid var(--line);border-radius:8px;padding:.5rem .6rem;background:var(--surface);color:var(--ink)}
+  .bw-form input[type=number]{width:96px;text-align:center}
+  .bw-form input:focus{outline:2px solid var(--aero);outline-offset:1px;border-color:var(--aero)}
+  .bw-form .btn{padding:.5rem 1rem}
+  @media (max-width:680px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .ex-select{max-width:100%}
+  }
 </style>
 </head>
 <body>
@@ -422,6 +473,18 @@
     <div class="day-panel" id="dayPanel"></div>
   </section>
 
+  <!-- PROGRESS -->
+  <section id="progress">
+    <div class="sec-head"><h2>Progress</h2><span class="idx">per exercise</span></div>
+    <div class="card" id="progCard"></div>
+  </section>
+
+  <!-- BODYWEIGHT -->
+  <section id="bodyweight">
+    <div class="sec-head"><h2>Bodyweight</h2><span class="idx">trend</span></div>
+    <div class="card" id="bwCard"></div>
+  </section>
+
   <!-- REFERENCE (collapsible) -->
   <section id="reference">
     <div class="sec-head"><h2>The plan</h2><span class="idx">reference</span></div>
@@ -431,11 +494,11 @@
       <div class="acc-body">
         <div class="week">
           <div><div class="dlabel">Mon</div><div class="slot rest"><span class="t">OFF</span><span class="n">Rest</span></div></div>
-          <div><div class="dlabel">Tue</div><div class="slot lift"><span class="t">Run+lift</span><span class="n">Lower A</span></div></div>
-          <div><div class="dlabel">Wed</div><div class="slot lift"><span class="t">Run+lift</span><span class="n">Upper A</span></div></div>
+          <div><div class="dlabel">Tue</div><div class="slot lift"><span class="t">Run+lift</span><span class="n">Legs</span></div></div>
+          <div><div class="dlabel">Wed</div><div class="slot lift"><span class="t">Run+lift</span><span class="n">Chest+Back</span></div></div>
           <div><div class="dlabel">Thu</div><div class="slot rest"><span class="t">OFF</span><span class="n">Rest</span></div></div>
-          <div><div class="dlabel">Fri</div><div class="slot lift"><span class="t">Run+lift</span><span class="n">Lower B</span></div></div>
-          <div><div class="dlabel">Sat</div><div class="slot lift"><span class="t">Lift+run</span><span class="n">Upper B</span></div><div class="slot drum sm"><span class="t">PM</span><span class="n">Drums</span></div></div>
+          <div><div class="dlabel">Fri</div><div class="slot lift"><span class="t">Run+lift</span><span class="n">Shoulders</span></div></div>
+          <div><div class="dlabel">Sat</div><div class="slot lift"><span class="t">Lift+run</span><span class="n">Back+Bis</span></div><div class="slot drum sm"><span class="t">PM</span><span class="n">Drums</span></div></div>
           <div><div class="dlabel">Sun</div><div class="slot aero"><span class="t">8–12 km</span><span class="n">Long run</span></div></div>
         </div>
         <p class="rsub" style="margin-top:12px">Each gym day opens with a 20-min easy Zone 2 run; Saturday flips it (lift then cooldown run) and has the drum class in the afternoon. Mon/Thu rest, Sun long run.</p>
@@ -533,7 +596,7 @@ service cloud.firestore {
   const FB_VERSION = "12.15.0";
 
   const SPLITS = {
-    'lower-a': { name:'Lower A', day:'Tue', focus:'Quad dominant · posterior chain · knee health · calves', time:'~65 min',
+    'lower-a': { name:'Legs', day:'Tue', focus:'Quad dominant · posterior chain · knee health · calves', time:'~65 min',
       tip:'Order is fixed: Squat → RDL → Lunges → Knee hold → Calves. 2–3 min rest on compounds. Stretch after.',
       ex:[
         {n:'Barbell back squat', t:'4 × 4–6', c:'Drive through heels, chest tall. The anchor of the week.'},
@@ -542,7 +605,7 @@ service cloud.firestore {
         {n:'Knee sit hold', t:'3 × 20–30s', u:'time', c:'Kneel, lean back with hips extended. Build depth over weeks.'},
         {n:'Standing calf raises', t:'4 × 15–20', c:'On a step for full range. Slow 3 sec eccentric.'}
       ]},
-    'upper-a': { name:'Upper A', day:'Wed', focus:'Horizontal push · vertical pull · rear delt · shoulder health', time:'~60 min',
+    'upper-a': { name:'Chest & Back', day:'Wed', focus:'Horizontal push · vertical pull · rear delt · shoulder health', time:'~60 min',
       tip:'3 pulling, 2 pushing — keeps shoulders healthy. The upper-back machine at the end is shoulder-health work; don\u2019t rush it.',
       ex:[
         {n:'Barbell bench press', t:'4 × 4–6', c:'Scapula retracted, slight arch, 2 sec descent.'},
@@ -551,7 +614,7 @@ service cloud.firestore {
         {n:'Dumbbell incline press', t:'3 × 10–12', c:'30–45° incline, control the descent.'},
         {n:'Technogym Upper Back machine', t:'3 × 12–15', c:'Squeeze hard at end range, slow return.'}
       ]},
-    'lower-b': { name:'Lower B', day:'Fri', focus:'Shoulders · upper back · triceps · core', time:'~70 min',
+    'lower-b': { name:'Shoulders & Triceps', day:'Fri', focus:'Shoulders · upper back · triceps · core', time:'~70 min',
       tip:'Arnold press and push press first while fresh. Tricep double-hit (cable + skull crushers) for arm volume. Core finishes.',
       ex:[
         {n:'Arnold press', t:'4 × 8–10', c:'Full rotation through the press — all three delt heads.'},
@@ -561,7 +624,7 @@ service cloud.firestore {
         {n:'Skull crushers', t:'3 × 10–12', c:'EZ bar, lower slowly to the forehead, full lockout.'},
         {n:'Hanging leg raise', t:'3 × 10–12', c:'Slow, no swing, tuck the pelvis at the top.'}
       ]},
-    'upper-b': { name:'Upper B', day:'Sat', focus:'Vertical push · vertical pull · upper back · biceps', time:'~65 min',
+    'upper-b': { name:'Back & Biceps', day:'Sat', focus:'Vertical push · vertical pull · upper back · biceps', time:'~65 min',
       tip:'Saturday is bicep day — EZ curl + hammer curl for full development. Short easy run after, legs fresh for Sunday.',
       ex:[
         {n:'Strict overhead press', t:'4 × 5–6', c:'No leg drive. Core tight, bar just in front of the face.'},
@@ -576,6 +639,9 @@ service cloud.firestore {
 
   // ---- state ----
   let LOGS = [];                 // [{id,date,split,splitName,exercises:[{n,sets:[{w,r}]}]}]
+  let BW = [];                   // [{id:'bw-DATE',type:'bw',date,kg}] — bodyweight log (shares the workouts collection)
+  let progEx = null;             // currently-selected exercise in the Progress chart
+  let progMetric = 'e1rm';       // e1rm | top | vol
   const now = new Date();
   let viewY = now.getFullYear(), viewM = now.getMonth();
   let selectedDate = iso(now);
@@ -599,6 +665,77 @@ service cloud.firestore {
   function fmtShort(s){ const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
   function sessionVolume(entry){ let v=0; (entry.exercises||[]).forEach(ex=>(ex.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)) v+=parseFloat(s.w)*parseFloat(s.r); })); return v; }
   function lastSessionBefore(key,date){ return LOGS.filter(e=>e.split===key && e.date<date).sort((a,b)=>b.date.localeCompare(a.date))[0]||null; }
+  function splitDisplay(entry){ return (entry&&SPLITS[entry.split]&&SPLITS[entry.split].name)||(entry&&entry.splitName)||''; }
+  function num(x){ return parseFloat(x); }
+  function epley(w,r){ return num(w)*(1+num(r)/30); }
+  function round1(n){ return Math.round(n*10)/10; }
+
+  // best estimated-1RM for an exercise across the log (optional date filters)
+  function bestE1RM(name, opts){
+    opts=opts||{}; let best=0;
+    LOGS.forEach(e=>{
+      if(opts.excludeDate && e.date===opts.excludeDate) return;
+      if(opts.beforeDate && !(e.date<opts.beforeDate)) return;
+      (e.exercises||[]).forEach(x=>{ if(x.n!==name) return;
+        (x.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)){ const v=epley(s.w,s.r); if(v>best) best=v; } }); });
+    });
+    return best;
+  }
+  // per-session metric series for one exercise: [{date, e1rm, top, vol}]
+  function exSeries(name){
+    const out=[];
+    LOGS.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).forEach(e=>{
+      let e1=0, top=0, vol=0, has=false;
+      (e.exercises||[]).forEach(x=>{ if(x.n!==name) return;
+        (x.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)){ has=true; const w=num(s.w),r=num(s.r); e1=Math.max(e1,epley(w,r)); top=Math.max(top,w); vol+=w*r; } }); });
+      if(has) out.push({date:e.date, e1rm:e1, top:top, vol:vol});
+    });
+    return out;
+  }
+  // exercise names that have at least one load set, most-recent first
+  function loggedExercises(){
+    const seen={};
+    LOGS.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).forEach(e=>{
+      (e.exercises||[]).forEach(x=>{ if(seen[x.n]) return; if((x.sets||[]).some(s=>isNum(s.w)&&isNum(s.r))) seen[x.n]=e.date; });
+    });
+    return Object.keys(seen);
+  }
+  // consecutive scheduled gym days logged, counting back from today
+  function computeStreak(){
+    let streak=0; const t=new Date();
+    for(let i=0;i<240;i++){
+      const cur=new Date(t.getFullYear(),t.getMonth(),t.getDate()-i);
+      if(!GYM_DOWS.includes(cur.getDay())) continue;
+      const ds=iso(cur); const logged=!!entryFor(ds);
+      if(i===0 && !logged) continue;   // today's session may still be ahead — don't break on it
+      if(logged) streak++; else break;
+    }
+    return streak;
+  }
+  // simple inline SVG line chart from an array of numbers
+  function lineChart(vals){
+    if(!vals.length) return '<div class="chart-empty">No data yet — log a few sessions.</div>';
+    const W=600,H=130,pad=12;
+    const min=Math.min.apply(null,vals), max=Math.max.apply(null,vals), span=(max-min)||1, n=vals.length;
+    const X=i=> n===1 ? W/2 : pad + i*(W-2*pad)/(n-1);
+    const Y=v=> H-pad - ((v-min)/span)*(H-2*pad);
+    const pts=vals.map((v,i)=>X(i).toFixed(1)+','+Y(v).toFixed(1));
+    const area='M '+X(0).toFixed(1)+','+(H-pad)+' L '+pts.join(' L ')+' L '+X(n-1).toFixed(1)+','+(H-pad)+' Z';
+    const dotI=n-1;
+    return '<div class="chart"><svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none" role="img" aria-label="trend">'+
+      '<path class="carea" d="'+area+'"/>'+
+      (n>1?'<polyline class="cline" points="'+pts.join(' ')+'"/>':'')+
+      '<circle class="cdot" cx="'+X(dotI).toFixed(1)+'" cy="'+Y(vals[dotI]).toFixed(1)+'" r="5"/>'+
+      '</svg></div>';
+  }
+  // progress ring (0..1)
+  function ringSVG(frac, center){
+    const r=18, c=2*Math.PI*r, off=c*(1-Math.max(0,Math.min(1,frac)));
+    return '<svg class="ring" viewBox="0 0 44 44">'+
+      '<circle class="bg" cx="22" cy="22" r="'+r+'"/>'+
+      '<circle class="fg" cx="22" cy="22" r="'+r+'" stroke-dasharray="'+(c-off).toFixed(1)+' '+off.toFixed(1)+'"/>'+
+      '<text class="ring-c" x="22" y="22" text-anchor="middle" dominant-baseline="central">'+center+'</text></svg>';
+  }
 
   // ---- wake lock (keep screen on mid-workout) ----
   let wakeLock=null;
@@ -617,6 +754,10 @@ service cloud.firestore {
   }
   function readLocal(){ try{ const r=localStorage.getItem('trainingLog'); LOGS = r?JSON.parse(r):[]; }catch(e){ localOK=false; } }
   function writeLocal(){ try{ localStorage.setItem('trainingLog', JSON.stringify(LOGS)); }catch(e){ localOK=false; setSync('session'); } }
+  function readLocalBW(){ try{ const r=localStorage.getItem('trainingBW'); BW = r?JSON.parse(r):[]; }catch(e){} }
+  function writeLocalBW(){ try{ localStorage.setItem('trainingBW', JSON.stringify(BW)); }catch(e){} }
+  function isBW(d){ return d && (d.type==='bw' || String(d.id||'').startsWith('bw-')); }
+  function sortBW(){ BW.sort((a,b)=>(a.date||'').localeCompare(b.date||'')); }
 
   async function initStore(){
     if(FIREBASE_CONFIG && FIREBASE_CONFIG.projectId){
@@ -640,18 +781,20 @@ service cloud.firestore {
             setSync('cloud'); showGate(false);
             const col = fs.collection(db,'users',u.uid,'workouts');
             unsub = fs.onSnapshot(col, snap=>{
-              LOGS = snap.docs.map(d=>d.data()).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+              const all = snap.docs.map(d=>d.data());
+              LOGS = all.filter(d=>!isBW(d)).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+              BW = all.filter(isBW).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
               renderAll();
             }, err=>{ console.error(err); });
           }else{
-            LOGS=[]; setSync('signin'); showGate(true); renderAll();
+            LOGS=[]; BW=[]; setSync('signin'); showGate(true); renderAll();
           }
         });
         return; // auth state drives rendering
       }catch(e){ console.error('Firebase init failed, using local storage:', e); fb=null; }
     }
     // local-only mode (no config)
-    readLocal(); setSync(localOK?'local':'session'); renderAuth(); showGate(false); renderAll();
+    readLocal(); readLocalBW(); setSync(localOK?'local':'session'); renderAuth(); showGate(false); renderAll();
   }
 
   async function persist(entry){
@@ -661,6 +804,14 @@ service cloud.firestore {
   async function removeEntry(id){
     if(fb && user){ await fb.fs.deleteDoc(fb.fs.doc(fb.db,'users',user.uid,'workouts',id)); }
     else { LOGS=LOGS.filter(e=>e.id!==id); writeLocal(); renderAll(); }
+  }
+  async function persistBW(rec){
+    if(fb && user){ await fb.fs.setDoc(fb.fs.doc(fb.db,'users',user.uid,'workouts',rec.id), rec); }
+    else { const i=BW.findIndex(b=>b.id===rec.id); if(i>=0) BW[i]=rec; else BW.push(rec); sortBW(); writeLocalBW(); renderAll(); }
+  }
+  async function removeBW(id){
+    if(fb && user){ await fb.fs.deleteDoc(fb.fs.doc(fb.db,'users',user.uid,'workouts',id)); }
+    else { BW=BW.filter(b=>b.id!==id); writeLocalBW(); renderAll(); }
   }
 
   // ---- auth ----
@@ -690,14 +841,15 @@ service cloud.firestore {
   function showGate(show){
     const gate=document.getElementById('gate'); const tracker=document.getElementById('tracker');
     if(!gate||!tracker) return;
+    const gated=['tracker','progress','bodyweight'].map(id=>document.getElementById(id)).filter(Boolean);
     if(show){
-      tracker.classList.add('hidden');
+      gated.forEach(s=>s.classList.add('hidden'));
       gate.innerHTML='<div class="gate"><h3>Sign in to your training log</h3>'+
         '<p>Your sessions save to your Google account and sync across every device you sign in on.</p>'+
         '<button class="gbtn" type="button" id="signinBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg> Continue with Google</button>'+
         '<div class="err" id="gateErr"></div></div>';
       const b=document.getElementById('signinBtn'); if(b) b.onclick=signInNow;
-    } else { tracker.classList.remove('hidden'); gate.innerHTML=''; }
+    } else { gated.forEach(s=>s.classList.remove('hidden')); gate.innerHTML=''; }
   }
 
   // ---- calendar ----
@@ -729,7 +881,7 @@ service cloud.firestore {
     const entry=entryFor(selectedDate);
     panel.innerHTML =
       '<div class="dp-head"><div class="dp-date">'+esc(fmtFull(selectedDate))+'</div>'+
-      (entry?'<span class="chip-ok">✓ '+esc(entry.splitName)+' logged</span>':'')+'</div>'+
+      (entry?'<span class="chip-ok">✓ '+esc(splitDisplay(entry))+' logged</span>':'')+'</div>'+
       '<div class="label">Which split?</div>'+
       '<div class="split-pick" id="splitPick">'+
         Object.keys(SPLITS).map(k=>'<button type="button" class="split-btn'+(entry&&entry.split===k?' active':'')+'" data-k="'+k+'">'+SPLITS[k].name+'</button>').join('')+
@@ -766,6 +918,7 @@ service cloud.firestore {
     const unit = ex.unit==='time' ? 'time' : 'load';
     const sets = (ex.sets&&ex.sets.length) ? ex.sets : Array.from({length: ex.t?defaultSets(ex.t):3},()=>({}));
     const lastLine = ex.lastSets ? '<div class="lex-last">last '+esc(fmtShort(ex.lastDate))+': <b>'+esc(fmtSets(ex.lastSets))+'</b> <button type="button" class="uselast">use</button></div>' : '';
+    const bestLine = (unit==='load' && ex.best>0) ? '<div class="lex-last">best <b>'+round1(ex.best)+' kg</b> est 1RM — beat it 🏆</div>' : '';
     const targetLine = ex.t ? '<div class="lex-target">target '+esc(ex.t)+'</div>' : '';
     const cues = ex.c ? '<details class="lex-cues"><summary></summary><div class="cue">'+esc(ex.c)+'</div></details>' : '';
     return '<div class="lex" data-unit="'+unit+'"'+(ex.lastSets?' data-last=\''+esc(JSON.stringify(ex.lastSets))+'\'':'')+'>'+
@@ -777,7 +930,7 @@ service cloud.firestore {
               '<button type="button" data-u="time"'+(unit==='time'?' class="on"':'')+'>time</button></div>'+
             '<button type="button" class="rmex" aria-label="Remove exercise" title="Remove exercise">🗑</button>'+
           '</div></div>'+
-        lastLine+ cues+
+        lastLine+ bestLine+ cues+
         '<div class="sets">'+ sets.map((s,i)=>setRow(i+1,s,unit)).join('') +
           '<button type="button" class="addset">+ add set</button>'+
         '</div></div>';
@@ -820,13 +973,15 @@ service cloud.firestore {
       list.push({ n:ex.n, t:ex.t, c:ex.c,
         unit: saved?setUnit(saved.sets):(ex.u||'load'),
         sets: (saved&&saved.sets&&saved.sets.length)?saved.sets:null,
-        lastSets: lx?lx.sets:null, lastDate: last?last.date:null });
+        lastSets: lx?lx.sets:null, lastDate: last?last.date:null,
+        best: bestE1RM(ex.n,{beforeDate:selectedDate}) });
     });
     // saved custom / renamed exercises not in the template
     if(existing) existing.forEach(sx=>{
       if(sp.ex.some(t=>t.n===sx.n)) return;
       const lx=lastFor(sx.n);
-      list.push({ n:sx.n, t:null, c:null, unit:setUnit(sx.sets), sets:sx.sets, lastSets: lx?lx.sets:null, lastDate: last?last.date:null });
+      list.push({ n:sx.n, t:null, c:null, unit:setUnit(sx.sets), sets:sx.sets, lastSets: lx?lx.sets:null, lastDate: last?last.date:null,
+        best: bestE1RM(sx.n,{beforeDate:selectedDate}) });
     });
 
     let h=list.map(exCard).join('');
@@ -878,11 +1033,20 @@ service cloud.firestore {
       if(name && sets.length) exercises.push({n:name, sets});
     });
     if(!exercises.length){ status.style.color='var(--lift)'; status.textContent='Add a name and at least one set first.'; showToast('Nothing to save','Add a name and at least one set',true); return; }
+    // detect new estimated-1RM PRs (only counts as a PR if it beats an existing best)
+    const prs=[];
+    exercises.forEach(ex=>{
+      let newE=0; (ex.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)) newE=Math.max(newE, epley(s.w,s.r)); });
+      if(newE<=0) return;
+      const prev=bestE1RM(ex.n,{excludeDate:selectedDate});
+      if(prev>0 && newE>prev+0.01) prs.push(ex.n);
+    });
     const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, exercises };
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
-      showToast('Session saved', SPLITS[key].name+' · '+exercises.length+' exercise'+(exercises.length>1?'s':'')+(fb?' · synced to cloud':''));
+      if(prs.length) showToast('🏆 New PR'+(prs.length>1?'s':'')+'!', prs.slice(0,3).join(', ')+(prs.length>3?' +'+(prs.length-3)+' more':''));
+      else showToast('Session saved', SPLITS[key].name+' · '+exercises.length+' exercise'+(exercises.length>1?'s':'')+(fb?' · synced to cloud':''));
       releaseWake();
     }
     catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
@@ -965,13 +1129,100 @@ service cloud.firestore {
     const weekLogs=LOGS.filter(e=>e.date>=wkStart && e.date<=wkEnd);
     let vol=0; weekLogs.forEach(e=>vol+=sessionVolume(e));
     const volK = vol>=1000 ? (vol/1000).toFixed(1)+'k' : Math.round(vol);
+    const goal=4, done=Math.min(weekLogs.length,99);
+    const streak=computeStreak();
     el.innerHTML =
+      '<div class="stat"><div class="ring-wrap">'+ringSVG(weekLogs.length/goal, done+'/'+goal)+'<div><div class="k" style="margin-top:0">This week</div></div></div></div>'+
+      '<div class="stat"><div class="v fire">'+(streak?'🔥 '+streak:'—')+'</div><div class="k">Session streak</div></div>'+
       '<div class="stat"><div class="v">'+month+'</div><div class="k">This month</div></div>'+
-      '<div class="stat"><div class="v cy">'+weekLogs.length+'</div><div class="k">This week</div></div>'+
-      '<div class="stat"><div class="v">'+volK+'</div><div class="k">Volume · wk (kg)</div></div>';
+      '<div class="stat"><div class="v cy">'+volK+'</div><div class="k">Volume · wk (kg)</div></div>';
+    renderBadges();
   }
 
-  function renderAll(){ renderStats(); renderCalendar(); renderDayPanel(); }
+  function renderBadges(){
+    let wrap=document.getElementById('badges');
+    const total=LOGS.length;
+    const tiers=[100,50,25,10,5,1];
+    const tier=tiers.find(n=>total>=n);
+    const items=[];
+    if(tier) items.push('<span class="badge">🏅 '+total+' session'+(total>1?'s':'')+'</span>');
+    const streak=computeStreak();
+    if(streak>=3) items.push('<span class="badge warm">🔥 '+streak+'-session streak</span>');
+    const distinct=loggedExercises().length;
+    if(distinct>=8) items.push('<span class="badge">💪 '+distinct+' exercises tracked</span>');
+    if(!wrap){ wrap=document.createElement('div'); wrap.id='badges'; wrap.className='badges'; const stats=document.getElementById('stats'); stats.parentNode.insertBefore(wrap, stats.nextSibling); }
+    wrap.innerHTML=items.join('');
+    wrap.style.display=items.length?'flex':'none';
+  }
+
+  // ---- progress ----
+  function renderProgress(){
+    const card=document.getElementById('progCard'); if(!card) return;
+    const names=loggedExercises();
+    if(!names.length){ card.innerHTML='<div class="chart-empty">Log a few sessions and your strength trend will show up here.</div>'; return; }
+    if(!progEx || names.indexOf(progEx)<0) progEx=names[0];
+    const metrics=[{k:'e1rm',l:'Est 1RM'},{k:'top',l:'Top set'},{k:'vol',l:'Volume'}];
+    const series=exSeries(progEx);
+    const vals=series.map(p=>p[progMetric]).map(round1);
+    const pr=series.length?Math.max.apply(null,series.map(p=>p.e1rm)):0;
+    const prTop=series.length?Math.max.apply(null,series.map(p=>p.top)):0;
+    const latest=series.length?series[series.length-1]:null;
+    const unit = progMetric==='vol' ? ' kg·vol' : ' kg';
+    card.innerHTML=
+      '<div class="prog-top">'+
+        '<select class="ex-select" id="progSelect">'+names.map(n=>'<option'+(n===progEx?' selected':'')+'>'+esc(n)+'</option>').join('')+'</select>'+
+        '<div class="seg" id="progSeg">'+metrics.map(m=>'<button type="button" data-k="'+m.k+'"'+(m.k===progMetric?' class="on"':'')+'>'+m.l+'</button>').join('')+'</div>'+
+      '</div>'+
+      '<div class="prog-pr">'+
+        '<div class="pr">Best est 1RM<b class="cy">'+round1(pr)+' kg</b></div>'+
+        '<div class="pr">Heaviest set<b>'+round1(prTop)+' kg</b></div>'+
+        '<div class="pr">Latest<b>'+(latest?round1(latest[progMetric])+unit:'—')+'</b></div>'+
+        '<div class="pr">Sessions<b>'+series.length+'</b></div>'+
+      '</div>'+
+      lineChart(vals)+
+      (series.length?'<div class="chart-x"><span>'+esc(fmtShort(series[0].date))+'</span><span>'+esc(fmtShort(series[series.length-1].date))+'</span></div>':'');
+    const sel=document.getElementById('progSelect'); if(sel) sel.onchange=()=>{ progEx=sel.value; renderProgress(); };
+    card.querySelectorAll('#progSeg button').forEach(b=>b.onclick=()=>{ progMetric=b.dataset.k; renderProgress(); });
+  }
+
+  // ---- bodyweight ----
+  function renderBodyweight(){
+    const card=document.getElementById('bwCard'); if(!card) return;
+    const list=BW.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')).filter(b=>isNum(b.kg));
+    const latest=list.length?list[list.length-1]:null;
+    const first=list.length?list[0]:null;
+    let deltaHtml='';
+    if(latest && first && list.length>1){
+      const d=round1(num(latest.kg)-num(first.kg));
+      deltaHtml='<span class="bw-delta '+(d<=0?'dn':'up')+'">'+(d>0?'▲ +':d<0?'▼ ':'• ')+Math.abs(d)+' kg since '+esc(fmtShort(first.date))+'</span>';
+    }
+    const today=todayIso();
+    const todayVal=(BW.find(b=>b.date===today)||{}).kg||'';
+    card.innerHTML=
+      '<div class="bw-top">'+
+        '<div class="bw-now">'+(latest?round1(num(latest.kg))+' <small>kg</small>':'—')+'</div>'+
+        deltaHtml+
+      '</div>'+
+      lineChart(list.map(b=>round1(num(b.kg))))+
+      (list.length>1?'<div class="chart-x"><span>'+esc(fmtShort(list[0].date))+'</span><span>'+esc(fmtShort(list[list.length-1].date))+'</span></div>':'')+
+      '<div class="bw-form">'+
+        '<input type="date" id="bwDate" value="'+today+'" max="'+today+'">'+
+        '<input type="number" inputmode="decimal" id="bwKg" placeholder="kg" step="0.1" value="'+esc(todayVal)+'">'+
+        '<button type="button" class="btn" id="bwSave">Log weight</button>'+
+        (BW.find(b=>b.date===today)?'<button type="button" class="btn danger" id="bwDel">Delete today</button>':'')+
+      '</div>';
+    const save=document.getElementById('bwSave');
+    save.onclick=()=>{
+      const date=document.getElementById('bwDate').value||today;
+      const kg=document.getElementById('bwKg').value.trim();
+      if(!isNum(kg)){ showToast('Enter a weight','A number in kg, e.g. 78.5',true); return; }
+      persistBW({ id:'bw-'+date, type:'bw', date, kg });
+      showToast('Bodyweight logged', round1(num(kg))+' kg · '+fmtShort(date));
+    };
+    const del=document.getElementById('bwDel'); if(del) del.onclick=()=>{ removeBW('bw-'+today); showToast('Bodyweight removed', fmtShort(today), true); };
+  }
+
+  function renderAll(){ renderStats(); renderCalendar(); renderDayPanel(); renderProgress(); renderBodyweight(); }
 
   // ---- wire nav ----
   document.getElementById('prevM').addEventListener('click',()=>{ viewM--; if(viewM<0){viewM=11;viewY--;} renderCalendar(); });
