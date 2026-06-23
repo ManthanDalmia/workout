@@ -60,6 +60,63 @@
     --on-lift:#FFFFFF;
     --shadow:0 1px 0 rgba(0,0,0,.04), 0 18px 40px -26px rgba(0,0,0,.30);
   }
+  /* === Ember (dark warm) === */
+  [data-theme="ember"]{
+    --paper:#120F0D; --paper-2:#1B1614;
+    --surface:#241D1A; --surface-2:#171210;
+    --ink:#F3EDE8; --ink-soft:#B6A89F; --ink-faint:#7A6B62;
+    --line:#332823; --line-soft:#241C18;
+    --aero:#F0A83C; --aero-bg:rgba(240,168,60,.13); --aero-text:#F7C26E; --aero-line:rgba(240,168,60,.32);
+    --lift:#E8542B; --lift-bg:rgba(232,84,43,.14); --lift-text:#FF8E66; --lift-line:rgba(232,84,43,.34);
+    --rest:#6E6058; --rest-bg:rgba(110,96,88,.15);
+    --drum:#E08AB0; --drum-bg:rgba(224,138,176,.15); --drum-line:rgba(224,138,176,.32);
+    --eq:#E08AB0;
+    --glow1:rgba(240,168,60,.10); --glow2:rgba(232,84,43,.11);
+    --on-lift:#1A0C06;
+  }
+  /* === Grape (dark purple) === */
+  [data-theme="grape"]{
+    --paper:#0F0B17; --paper-2:#181226;
+    --surface:#211934; --surface-2:#140F20;
+    --ink:#F0EAF7; --ink-soft:#B3A6C6; --ink-faint:#766689;
+    --line:#2C2342; --line-soft:#201936;
+    --aero:#9BE65C; --aero-bg:rgba(155,230,92,.12); --aero-text:#BFF08A; --aero-line:rgba(155,230,92,.30);
+    --lift:#E15CCB; --lift-bg:rgba(225,92,203,.14); --lift-text:#F299E2; --lift-line:rgba(225,92,203,.34);
+    --rest:#6A5E82; --rest-bg:rgba(106,94,130,.16);
+    --drum:#7CC8FF; --drum-bg:rgba(124,200,255,.15); --drum-line:rgba(124,200,255,.30);
+    --eq:#7CC8FF;
+    --glow1:rgba(155,230,92,.08); --glow2:rgba(225,92,203,.11);
+    --on-lift:#1A0716;
+  }
+  /* === Mono (dark minimal) === */
+  [data-theme="mono"]{
+    --paper:#0E0F10; --paper-2:#161719;
+    --surface:#1E2022; --surface-2:#141516;
+    --ink:#ECEEF0; --ink-soft:#A0A5AB; --ink-faint:#646A70;
+    --line:#2A2D30; --line-soft:#1E2123;
+    --aero:#9FB3C8; --aero-bg:rgba(159,179,200,.12); --aero-text:#C2D2E0; --aero-line:rgba(159,179,200,.28);
+    --lift:#E2E5E8; --lift-bg:rgba(226,229,232,.10); --lift-text:#C7CCD1; --lift-line:rgba(226,229,232,.25);
+    --rest:#5A6066; --rest-bg:rgba(90,96,102,.16);
+    --drum:#B0A8C0; --drum-bg:rgba(176,168,192,.14); --drum-line:rgba(176,168,192,.30);
+    --eq:#B0A8C0;
+    --glow1:rgba(159,179,200,.06); --glow2:rgba(226,229,232,.05);
+    --on-lift:#15171A;
+  }
+  /* === Frost (light cool) === */
+  [data-theme="frost"]{
+    --paper:#EEF3F8; --paper-2:#FFFFFF;
+    --surface:#FFFFFF; --surface-2:#EAF0F6;
+    --ink:#15212E; --ink-soft:#4E5E6E; --ink-faint:#8696A6;
+    --line:#DCE5EE; --line-soft:#E8EEF4;
+    --aero:#0E84B8; --aero-bg:rgba(14,132,184,.10); --aero-text:#0A6A94; --aero-line:rgba(14,132,184,.30);
+    --lift:#3B5BDB; --lift-bg:rgba(59,91,219,.10); --lift-text:#2C46B0; --lift-line:rgba(59,91,219,.30);
+    --rest:#94A2B0; --rest-bg:rgba(148,162,176,.16);
+    --drum:#7A4FD0; --drum-bg:rgba(122,79,208,.12); --drum-line:rgba(122,79,208,.30);
+    --eq:#7A4FD0;
+    --glow1:rgba(14,132,184,.10); --glow2:rgba(59,91,219,.10);
+    --on-lift:#FFFFFF;
+    --shadow:0 1px 0 rgba(0,0,0,.04), 0 18px 40px -26px rgba(0,40,80,.30);
+  }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;background:
@@ -274,10 +331,23 @@
   }
 
   /* ===== theme switcher ===== */
+  .theme-wrap{position:relative}
   .theme-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.3rem .7rem;cursor:pointer;font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;transition:transform .08s ease,border-color .15s,color .15s}
   .theme-btn:hover{border-color:var(--aero);color:var(--aero-text)}
   .theme-btn:active{transform:scale(.96)}
   .theme-btn .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--aero),var(--lift))}
+  .theme-btn .cv{font-size:.7rem;transition:transform .18s}
+  .theme-wrap.open .theme-btn .cv{transform:rotate(180deg)}
+  .theme-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:60;background:var(--paper-2);border:1px solid var(--line);border-radius:13px;box-shadow:0 18px 44px -18px rgba(0,0,0,.6);padding:6px;min-width:178px;display:flex;flex-direction:column;gap:2px}
+  .theme-menu[hidden]{display:none}
+  .theme-opt{display:flex;align-items:center;gap:10px;width:100%;border:none;background:none;cursor:pointer;border-radius:9px;padding:.5rem .6rem;font-family:"Inter",sans-serif;font-size:.84rem;color:var(--ink);text-align:left;transition:background .12s}
+  .theme-opt:hover{background:var(--surface)}
+  .theme-opt.on{background:var(--surface)}
+  .theme-opt .sw{position:relative;width:30px;height:22px;border-radius:6px;border:1px solid var(--line);flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:3px}
+  .theme-opt .sw i{width:7px;height:7px;border-radius:50%;display:block}
+  .theme-opt .lbl{flex:1}
+  .theme-opt .ck{color:var(--aero-text);font-size:.8rem;opacity:0}
+  .theme-opt.on .ck{opacity:1}
 
   /* ===== editable / custom exercises ===== */
   .lex-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
@@ -315,7 +385,10 @@
       <h1>Log <span class="b">today.</span></h1>
     </div>
     <div class="topbar-right">
-      <button type="button" class="theme-btn" id="themeBtn" aria-label="Switch theme"><span class="dot"></span><span id="themeName">Aurora</span></button>
+      <div class="theme-wrap" id="themeWrap">
+        <button type="button" class="theme-btn" id="themeBtn" aria-label="Switch theme" aria-haspopup="true" aria-expanded="false"><span class="dot"></span><span id="themeName">Aurora</span><span class="cv">▾</span></button>
+        <div class="theme-menu" id="themeMenu" role="menu" hidden></div>
+      </div>
       <span class="sync" id="syncBadge">…</span>
       <div id="authArea"></div>
     </div>
@@ -828,21 +901,47 @@ service cloud.firestore {
   }
 
   // ---- theme switcher ----
-  const THEMES=[{id:'aurora',label:'Aurora'},{id:'indigo',label:'Indigo'},{id:'sand',label:'Daylight'}];
-  const THEME_COLOR={aurora:'#0D1413',indigo:'#0A0C16',sand:'#F4F1EA'};
+  const THEMES=[
+    {id:'aurora', label:'Aurora',   bg:'#0D1413', a:'#33D6C7', l:'#FF6A42'},
+    {id:'indigo', label:'Indigo',   bg:'#0A0C16', a:'#5BC8FF', l:'#A78BFA'},
+    {id:'ember',  label:'Ember',    bg:'#120F0D', a:'#F0A83C', l:'#E8542B'},
+    {id:'grape',  label:'Grape',    bg:'#0F0B17', a:'#9BE65C', l:'#E15CCB'},
+    {id:'mono',   label:'Mono',     bg:'#0E0F10', a:'#9FB3C8', l:'#E2E5E8'},
+    {id:'sand',   label:'Daylight', bg:'#F4F1EA', a:'#0E9E8E', l:'#E8541F'},
+    {id:'frost',  label:'Frost',    bg:'#EEF3F8', a:'#0E84B8', l:'#3B5BDB'}
+  ];
   function readTheme(){ try{ return localStorage.getItem('trainingTheme')||'aurora'; }catch(e){ return 'aurora'; } }
   function applyTheme(id){
-    const t=THEMES.some(x=>x.id===id)?id:'aurora';
-    if(t==='aurora') document.documentElement.removeAttribute('data-theme');
-    else document.documentElement.setAttribute('data-theme',t);
-    const nm=document.getElementById('themeName'); if(nm) nm.textContent=(THEMES.find(x=>x.id===t)||THEMES[0]).label;
-    const meta=document.querySelector('meta[name=theme-color]'); if(meta) meta.setAttribute('content',THEME_COLOR[t]);
-    try{ localStorage.setItem('trainingTheme',t); }catch(e){}
+    const th=THEMES.find(x=>x.id===id)||THEMES[0];
+    if(th.id==='aurora') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',th.id);
+    const nm=document.getElementById('themeName'); if(nm) nm.textContent=th.label;
+    const meta=document.querySelector('meta[name=theme-color]'); if(meta) meta.setAttribute('content',th.bg);
+    try{ localStorage.setItem('trainingTheme',th.id); }catch(e){}
+    const menu=document.getElementById('themeMenu');
+    if(menu) menu.querySelectorAll('.theme-opt').forEach(o=>o.classList.toggle('on',o.dataset.id===th.id));
+  }
+  function closeThemeMenu(){
+    const wrap=document.getElementById('themeWrap'), menu=document.getElementById('themeMenu'), btn=document.getElementById('themeBtn');
+    if(wrap) wrap.classList.remove('open'); if(menu) menu.hidden=true; if(btn) btn.setAttribute('aria-expanded','false');
   }
   function initTheme(){
+    const menu=document.getElementById('themeMenu');
+    if(menu){
+      menu.innerHTML=THEMES.map(t=>'<button type="button" role="menuitem" class="theme-opt" data-id="'+t.id+'">'+
+        '<span class="sw" style="background:'+t.bg+'"><i style="background:'+t.a+'"></i><i style="background:'+t.l+'"></i></span>'+
+        '<span class="lbl">'+t.label+'</span><span class="ck">✓</span></button>').join('');
+      menu.querySelectorAll('.theme-opt').forEach(o=>o.addEventListener('click',()=>{ applyTheme(o.dataset.id); closeThemeMenu(); }));
+    }
     applyTheme(readTheme());
-    const btn=document.getElementById('themeBtn');
-    if(btn) btn.addEventListener('click',()=>{ const i=THEMES.findIndex(x=>x.id===readTheme()); applyTheme(THEMES[(i+1)%THEMES.length].id); });
+    const btn=document.getElementById('themeBtn'), wrap=document.getElementById('themeWrap');
+    if(btn) btn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const open=wrap.classList.toggle('open');
+      if(menu) menu.hidden=!open; btn.setAttribute('aria-expanded',open?'true':'false');
+    });
+    document.addEventListener('click',e=>{ if(wrap && !wrap.contains(e.target)) closeThemeMenu(); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeThemeMenu(); });
   }
 
   // ---- reference sessions (generated from SPLITS) ----
