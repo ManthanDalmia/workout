@@ -17,6 +17,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800;900&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root{
+    /* === Aurora (default) === */
     --paper:#0D1413; --paper-2:#141D1C;
     --surface:#1A2524; --surface-2:#121A19;
     --ink:#EAF1EF; --ink-soft:#9CB0AC; --ink-faint:#62736F;
@@ -26,13 +27,44 @@
     --rest:#5C6C68; --rest-bg:rgba(92,108,104,.15);
     --drum:#9B8CFF; --drum-bg:rgba(155,140,255,.15); --drum-line:rgba(155,140,255,.32);
     --eq:#9B8CFF;
+    --glow1:rgba(51,214,199,.10); --glow2:rgba(255,106,66,.09);
+    --on-lift:#1A0E08;
     --radius:14px; --shadow:0 1px 0 rgba(0,0,0,.25), 0 20px 44px -24px rgba(0,0,0,.75);
+  }
+  /* === Indigo === */
+  [data-theme="indigo"]{
+    --paper:#0A0C16; --paper-2:#121627;
+    --surface:#1A2036; --surface-2:#10131F;
+    --ink:#EAECF7; --ink-soft:#A2A8C6; --ink-faint:#646B8C;
+    --line:#262C44; --line-soft:#1C2138;
+    --aero:#5BC8FF; --aero-bg:rgba(91,200,255,.12); --aero-text:#8FD9FF; --aero-line:rgba(91,200,255,.32);
+    --lift:#A78BFA; --lift-bg:rgba(167,139,250,.14); --lift-text:#C4B2FF; --lift-line:rgba(167,139,250,.34);
+    --rest:#5E668A; --rest-bg:rgba(94,102,138,.15);
+    --drum:#FF9EC4; --drum-bg:rgba(255,158,196,.15); --drum-line:rgba(255,158,196,.32);
+    --eq:#FF9EC4;
+    --glow1:rgba(91,200,255,.10); --glow2:rgba(167,139,250,.11);
+    --on-lift:#120A24;
+  }
+  /* === Daylight (light) === */
+  [data-theme="sand"]{
+    --paper:#F4F1EA; --paper-2:#FFFFFF;
+    --surface:#FFFFFF; --surface-2:#F1EEE6;
+    --ink:#1B2422; --ink-soft:#566460; --ink-faint:#909A94;
+    --line:#E3DED3; --line-soft:#ECE8DE;
+    --aero:#0E9E8E; --aero-bg:rgba(14,158,142,.10); --aero-text:#0B7C70; --aero-line:rgba(14,158,142,.30);
+    --lift:#E8541F; --lift-bg:rgba(232,84,31,.10); --lift-text:#C5410F; --lift-line:rgba(232,84,31,.30);
+    --rest:#9AA29C; --rest-bg:rgba(154,162,156,.16);
+    --drum:#6D55E0; --drum-bg:rgba(109,85,224,.12); --drum-line:rgba(109,85,224,.30);
+    --eq:#6D55E0;
+    --glow1:rgba(14,158,142,.10); --glow2:rgba(232,84,31,.10);
+    --on-lift:#FFFFFF;
+    --shadow:0 1px 0 rgba(0,0,0,.04), 0 18px 40px -26px rgba(0,0,0,.30);
   }
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;background:
-      radial-gradient(900px 520px at 88% -8%, rgba(51,214,199,.10), transparent 60%),
-      radial-gradient(820px 540px at -5% 112%, rgba(255,106,66,.09), transparent 58%),
+      radial-gradient(900px 520px at 88% -8%, var(--glow1), transparent 60%),
+      radial-gradient(820px 540px at -5% 112%, var(--glow2), transparent 58%),
       var(--paper);
     background-attachment:fixed;
     color:var(--ink);font-family:"Inter",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
@@ -64,7 +96,7 @@
   .cal-cell{position:relative;aspect-ratio:1/1;border:1px solid var(--line-soft);border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:.84rem;color:var(--ink);cursor:pointer;transition:.12s;padding:0}
   .cal-cell.empty{border:none;background:transparent;cursor:default}
   .cal-cell:hover:not(.empty):not(.logged){border-color:var(--lift);color:var(--lift-text)}
-  .cal-cell.logged{background:linear-gradient(160deg,#FF7A52,#E2502A);border-color:transparent;color:#1A0E08;font-weight:700;box-shadow:0 0 0 1px var(--lift-line),0 8px 20px -8px rgba(255,106,66,.6)}
+  .cal-cell.logged{background:linear-gradient(160deg,var(--lift-text),var(--lift));border-color:transparent;color:var(--on-lift);font-weight:700;box-shadow:0 0 0 1px var(--lift-line),0 8px 20px -8px rgba(255,106,66,.6)}
   .cal-cell.today{box-shadow:0 0 0 2px var(--aero),0 0 18px -4px rgba(51,214,199,.55)}
   .cal-cell.logged.today{box-shadow:0 0 0 2px var(--aero),0 8px 20px -8px rgba(255,106,66,.6)}
   .cal-cell.selected{outline:2px solid var(--ink);outline-offset:1px}
@@ -72,7 +104,7 @@
   .legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:14px;font-size:.76rem;color:var(--ink-soft)}
   .legend span{display:inline-flex;align-items:center;gap:.4rem}
   .lg{width:13px;height:13px;border-radius:4px;display:inline-block}
-  .lg.went{background:linear-gradient(160deg,#FF7A52,#E2502A)} .lg.gym{background:var(--surface);border:1px solid var(--line);position:relative}
+  .lg.went{background:linear-gradient(160deg,var(--lift-text),var(--lift))} .lg.gym{background:var(--surface);border:1px solid var(--line);position:relative}
   .lg.gym::after{content:'';position:absolute;width:4px;height:4px;border-radius:50%;background:var(--lift);left:50%;top:50%;transform:translate(-50%,-50%)}
   .lg.today{background:var(--surface);box-shadow:0 0 0 2px var(--aero)}
 
@@ -80,12 +112,12 @@
   .day-panel{border:1px solid var(--line);background:var(--paper-2);border-radius:var(--radius);box-shadow:var(--shadow);padding:clamp(16px,3vw,24px);margin-top:16px}
   .dp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
   .dp-date{font-family:"Archivo",sans-serif;font-weight:800;font-size:1.15rem}
-  .chip-ok{font-family:"JetBrains Mono",monospace;font-size:.62rem;background:var(--lift);color:#1A0E08;border-radius:999px;padding:.24rem .55rem;font-weight:700}
+  .chip-ok{font-family:"JetBrains Mono",monospace;font-size:.62rem;background:var(--lift);color:var(--on-lift);border-radius:999px;padding:.24rem .55rem;font-weight:700}
   .label{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
   .split-pick{display:flex;flex-wrap:wrap;gap:8px}
   .split-btn{font-family:"Archivo",sans-serif;font-weight:700;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.5rem .95rem;cursor:pointer;transition:.15s}
   .split-btn:hover{border-color:var(--lift);color:var(--ink)}
-  .split-btn.active{background:var(--lift);border-color:var(--lift);color:#1A0E08;box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
+  .split-btn.active{background:var(--lift);border-color:var(--lift);color:var(--on-lift);box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
   .hint{color:var(--ink-faint);font-size:.88rem;padding:6px 0}
 
   /* logging exercises */
@@ -111,7 +143,7 @@
   .addset{align-self:flex-start;border:1px dashed var(--line);background:var(--surface);color:var(--ink-soft);border-radius:8px;padding:.4rem .7rem;font-family:"JetBrains Mono",monospace;font-size:.68rem;cursor:pointer}
   .addset:hover{border-color:var(--aero);color:var(--aero)}
   .log-actions{display:flex;gap:10px;margin-top:14px;align-items:center;flex-wrap:wrap}
-  .btn{font-family:"Archivo",sans-serif;font-weight:700;font-size:.85rem;border-radius:10px;padding:.62rem 1.15rem;cursor:pointer;border:1px solid var(--lift);background:var(--lift);color:#1A0E08;box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
+  .btn{font-family:"Archivo",sans-serif;font-weight:700;font-size:.85rem;border-radius:10px;padding:.62rem 1.15rem;cursor:pointer;border:1px solid var(--lift);background:var(--lift);color:var(--on-lift);box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
   .btn:hover{filter:brightness(1.06)}
   .btn.ghost{background:var(--surface);color:var(--ink-soft);border-color:var(--line);box-shadow:none}
   .btn.danger{background:var(--surface);color:var(--lift-text);border-color:var(--lift-line);box-shadow:none}
@@ -240,6 +272,38 @@
     .cal-grid .cal-cell,.cal-cell.today:not(.logged){animation:none}
     .btn,.split-btn,.gbtn,.cal-cell,.cal-nav button,.addset,.uselast,.acc>summary{transition:none}
   }
+
+  /* ===== theme switcher ===== */
+  .theme-btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.3rem .7rem;cursor:pointer;font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;transition:transform .08s ease,border-color .15s,color .15s}
+  .theme-btn:hover{border-color:var(--aero);color:var(--aero-text)}
+  .theme-btn:active{transform:scale(.96)}
+  .theme-btn .dot{width:10px;height:10px;border-radius:50%;background:linear-gradient(135deg,var(--aero),var(--lift))}
+
+  /* ===== editable / custom exercises ===== */
+  .lex-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .lex-headl{flex:1;min-width:0}
+  .lex-name-input{width:100%;font-family:"Inter",sans-serif;font-weight:600;font-size:.92rem;color:var(--ink);background:transparent;border:none;border-bottom:1px dashed transparent;padding:1px 0;border-radius:0}
+  .lex-name-input:hover{border-bottom-color:var(--line)}
+  .lex-name-input:focus{outline:none;border-bottom-color:var(--aero)}
+  .lex-tools{display:flex;align-items:center;gap:4px;flex-shrink:0}
+  .unit-toggle{display:flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .unit-toggle button{border:none;background:var(--surface);color:var(--ink-faint);font-family:"JetBrains Mono",monospace;font-size:.58rem;letter-spacing:.03em;padding:.28rem .42rem;cursor:pointer;line-height:1}
+  .unit-toggle button.on{background:var(--aero);color:var(--on-lift)}
+  .rmex{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:1rem;width:30px;height:30px;border-radius:7px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .rmex:hover{color:var(--lift-text);background:var(--lift-bg)}
+  .addex{margin-top:4px;width:100%;border:1px dashed var(--line);background:var(--surface);color:var(--ink-soft);border-radius:10px;padding:.6rem;font-family:"Archivo",sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;transition:transform .08s ease,border-color .15s,color .15s}
+  .addex:hover{border-color:var(--aero);color:var(--aero-text)}
+  .addex:active{transform:scale(.98)}
+
+  /* ===== save toast / popup ===== */
+  #toastWrap{position:fixed;left:0;right:0;bottom:calc(22px + env(safe-area-inset-bottom));display:flex;justify-content:center;pointer-events:none;z-index:50;padding:0 16px}
+  .toast{pointer-events:auto;display:flex;align-items:center;gap:12px;background:var(--paper-2);border:1px solid var(--aero-line);box-shadow:0 18px 44px -18px rgba(0,0,0,.6);border-radius:14px;padding:14px 18px;max-width:360px;width:100%;transform:translateY(140%);opacity:0;transition:transform .32s cubic-bezier(.2,.9,.3,1.2),opacity .2s}
+  .toast.show{transform:translateY(0);opacity:1}
+  .toast .tick{width:30px;height:30px;flex-shrink:0;border-radius:50%;background:var(--aero);color:var(--on-lift);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1rem}
+  .toast.warn{border-color:var(--lift-line)} .toast.warn .tick{background:var(--lift)}
+  .toast .tt{font-family:"Archivo",sans-serif;font-weight:800;font-size:.92rem;color:var(--ink)}
+  .toast .ts{font-size:.76rem;color:var(--ink-soft);margin-top:1px}
+  @media (prefers-reduced-motion:reduce){ .toast{transition:opacity .2s} }
 </style>
 </head>
 <body>
@@ -251,10 +315,13 @@
       <h1>Log <span class="b">today.</span></h1>
     </div>
     <div class="topbar-right">
+      <button type="button" class="theme-btn" id="themeBtn" aria-label="Switch theme"><span class="dot"></span><span id="themeName">Aurora</span></button>
       <span class="sync" id="syncBadge">…</span>
       <div id="authArea"></div>
     </div>
   </div>
+
+  <div id="toastWrap" aria-live="polite"></div>
 
   <div id="gate"></div>
 
@@ -399,7 +466,7 @@ service cloud.firestore {
         {n:'Barbell back squat', t:'4 × 4–6', c:'Drive through heels, chest tall. The anchor of the week.'},
         {n:'Romanian deadlift', t:'3 × 8–10', c:'3 sec eccentric. Chase the hamstring stretch, not the load.'},
         {n:'Walking lunges', t:'3 × 10 ea', c:'Long stride, torso upright, front knee tracks out. Mimics the run stride.'},
-        {n:'Knee sit hold', t:'3 × 20–30s', c:'Kneel, lean back with hips extended. Build depth over weeks.'},
+        {n:'Knee sit hold', t:'3 × 20–30s', u:'time', c:'Kneel, lean back with hips extended. Build depth over weeks.'},
         {n:'Standing calf raises', t:'4 × 15–20', c:'On a step for full range. Slow 3 sec eccentric.'}
       ]},
     'upper-a': { name:'Upper A', day:'Wed', focus:'Horizontal push · vertical pull · rear delt · shoulder health', time:'~60 min',
@@ -452,7 +519,10 @@ service cloud.firestore {
   function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function entryFor(date){ return LOGS.find(e=>e.date===date); }
   function isNum(x){ return x!=='' && x!=null && !isNaN(parseFloat(x)); }
-  function fmtSets(sets){ return (sets||[]).map(s=>(s.w||'–')+'×'+(s.r||'–')).join(' · '); }
+  function fmtTime(t){ t=String(t==null?'':t).trim(); if(!t) return '–'; return /^\d+$/.test(t)?t+'s':t; }
+  function isTimeSet(s){ return s && s.t!=null && s.t!==''; }
+  function fmtSets(sets){ return (sets||[]).map(s=> isTimeSet(s) ? fmtTime(s.t) : ((s.w||'–')+'×'+(s.r||'–')) ).join(' · '); }
+  function setUnit(sets){ return (sets||[]).some(isTimeSet) ? 'time' : 'load'; }
   function fmtShort(s){ const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
   function sessionVolume(entry){ let v=0; (entry.exercises||[]).forEach(ex=>(ex.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)) v+=parseFloat(s.w)*parseFloat(s.r); })); return v; }
   function lastSessionBefore(key,date){ return LOGS.filter(e=>e.split===key && e.date<date).sort((a,b)=>b.date.localeCompare(a.date))[0]||null; }
@@ -601,55 +671,109 @@ service cloud.firestore {
     if(entry) buildForm(entry.split, entry.exercises);
   }
 
-  function setRow(idx, w, r){
-    return '<div class="setrow"><span class="sn">Set '+idx+'</span>'+
-      '<input type="text" inputmode="decimal" data-f="w" placeholder="kg" value="'+esc(w||'')+'">'+
-      '<input type="text" inputmode="numeric" data-f="r" placeholder="reps" value="'+esc(r||'')+'">'+
+  function setRow(idx, s, unit){
+    s=s||{};
+    const fields = unit==='time'
+      ? '<input type="text" inputmode="numeric" data-f="t" placeholder="time (e.g. 30 or 1:30)" value="'+esc(s.t||'')+'">'
+      : '<input type="text" inputmode="decimal" data-f="w" placeholder="kg" value="'+esc(s.w||'')+'">'+
+        '<input type="text" inputmode="numeric" data-f="r" placeholder="reps" value="'+esc(s.r||'')+'">';
+    return '<div class="setrow"><span class="sn">Set '+idx+'</span>'+fields+
       '<button type="button" class="rm" aria-label="Remove set">×</button></div>';
   }
 
   function fillSets(card, sets){
     const box=card.querySelector('.sets'); const add=box.querySelector('.addset');
+    const unit=card.dataset.unit||'load';
     box.querySelectorAll('.setrow').forEach(r=>r.remove());
-    (sets.length?sets:[{w:'',r:''}]).forEach((s,i)=>add.insertAdjacentHTML('beforebegin', setRow(i+1, s.w, s.r)));
+    (sets&&sets.length?sets:[{}]).forEach((s,i)=>add.insertAdjacentHTML('beforebegin', setRow(i+1, s, unit)));
     wireRemoves(box);
+  }
+
+  function exCard(ex){
+    const unit = ex.unit==='time' ? 'time' : 'load';
+    const sets = (ex.sets&&ex.sets.length) ? ex.sets : Array.from({length: ex.t?defaultSets(ex.t):3},()=>({}));
+    const lastLine = ex.lastSets ? '<div class="lex-last">last '+esc(fmtShort(ex.lastDate))+': <b>'+esc(fmtSets(ex.lastSets))+'</b> <button type="button" class="uselast">use</button></div>' : '';
+    const targetLine = ex.t ? '<div class="lex-target">target '+esc(ex.t)+'</div>' : '';
+    const cues = ex.c ? '<details class="lex-cues"><summary></summary><div class="cue">'+esc(ex.c)+'</div></details>' : '';
+    return '<div class="lex" data-unit="'+unit+'"'+(ex.lastSets?' data-last=\''+esc(JSON.stringify(ex.lastSets))+'\'':'')+'>'+
+        '<div class="lex-head"><div class="lex-headl">'+
+            '<input class="lex-name-input" type="text" placeholder="Exercise name" value="'+esc(ex.n||'')+'">'+
+            targetLine+
+          '</div><div class="lex-tools">'+
+            '<div class="unit-toggle"><button type="button" data-u="load"'+(unit==='load'?' class="on"':'')+'>kg×reps</button>'+
+              '<button type="button" data-u="time"'+(unit==='time'?' class="on"':'')+'>time</button></div>'+
+            '<button type="button" class="rmex" aria-label="Remove exercise" title="Remove exercise">🗑</button>'+
+          '</div></div>'+
+        lastLine+ cues+
+        '<div class="sets">'+ sets.map((s,i)=>setRow(i+1,s,unit)).join('') +
+          '<button type="button" class="addset">+ add set</button>'+
+        '</div></div>';
+  }
+
+  function readCardSets(card){
+    const out=[];
+    card.querySelectorAll('.setrow').forEach(row=>{
+      const g=f=>{ const el=row.querySelector('[data-f='+f+']'); return el?el.value:''; };
+      out.push({ w:g('w'), r:g('r'), t:g('t') });
+    });
+    return out;
+  }
+
+  function wireCard(card){
+    const setsBox=card.querySelector('.sets');
+    const addBtn=card.querySelector('.addset');
+    addBtn.addEventListener('click',()=>{ const n=setsBox.querySelectorAll('.setrow').length+1; addBtn.insertAdjacentHTML('beforebegin', setRow(n,{},card.dataset.unit||'load')); wireRemoves(setsBox); });
+    wireRemoves(setsBox);
+    const use=card.querySelector('.uselast');
+    if(use) use.addEventListener('click',()=>{ try{ fillSets(card, JSON.parse(card.dataset.last)); }catch(e){} });
+    const rmx=card.querySelector('.rmex'); if(rmx) rmx.addEventListener('click',()=>card.remove());
+    card.querySelectorAll('.unit-toggle button').forEach(btn=>btn.addEventListener('click',()=>{
+      const u=btn.dataset.u; if((card.dataset.unit||'load')===u) return;
+      const cur=readCardSets(card);
+      card.dataset.unit=u;
+      card.querySelectorAll('.unit-toggle button').forEach(x=>x.classList.toggle('on',x.dataset.u===u));
+      fillSets(card, cur);
+    }));
   }
 
   function buildForm(key, existing){
     const sp=SPLITS[key];
     const last=lastSessionBefore(key, selectedDate);
-    let h='';
+    const lastFor=name=> last?(last.exercises||[]).find(x=>x.n===name):null;
+    const list=[];
     sp.ex.forEach(ex=>{
       const saved=existing?existing.find(x=>x.n===ex.n):null;
-      const sets=(saved&&saved.sets&&saved.sets.length)?saved.sets:Array.from({length:defaultSets(ex.t)},()=>({w:'',r:''}));
-      const lastEx=last?(last.exercises||[]).find(x=>x.n===ex.n):null;
-      const lastLine = lastEx ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc(fmtSets(lastEx.sets))+'</b> <button type="button" class="uselast">use</button></div>' : '';
-      h+='<div class="lex" data-name="'+esc(ex.n)+'"'+(lastEx?' data-last=\''+esc(JSON.stringify(lastEx.sets))+'\'':'')+'>'+
-           '<div class="lex-head"><div class="lex-name">'+esc(ex.n)+'</div><div class="lex-target">target '+esc(ex.t)+'</div></div>'+
-           lastLine+
-           '<details class="lex-cues"><summary></summary><div class="cue">'+esc(ex.c)+'</div></details>'+
-           '<div class="sets">'+ sets.map((s,i)=>setRow(i+1,s.w,s.r)).join('') +
-             '<button type="button" class="addset">+ add set</button>'+
-           '</div></div>';
+      const lx=lastFor(ex.n);
+      list.push({ n:ex.n, t:ex.t, c:ex.c,
+        unit: saved?setUnit(saved.sets):(ex.u||'load'),
+        sets: (saved&&saved.sets&&saved.sets.length)?saved.sets:null,
+        lastSets: lx?lx.sets:null, lastDate: last?last.date:null });
     });
+    // saved custom / renamed exercises not in the template
+    if(existing) existing.forEach(sx=>{
+      if(sp.ex.some(t=>t.n===sx.n)) return;
+      const lx=lastFor(sx.n);
+      list.push({ n:sx.n, t:null, c:null, unit:setUnit(sx.sets), sets:sx.sets, lastSets: lx?lx.sets:null, lastDate: last?last.date:null });
+    });
+
+    let h=list.map(exCard).join('');
+    h+='<button type="button" class="addex" id="addExBtn">+ Add exercise</button>';
     h+='<div class="log-actions"><button type="button" class="btn" id="saveBtn">Save session</button>'+
        (last?'<button type="button" class="btn ghost" id="prefillBtn">Prefill from '+esc(fmtShort(last.date))+'</button>':'')+
        (existing?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
        '<span class="log-status" id="logStatus"></span></div>';
     const form=document.getElementById('logForm'); form.innerHTML=h;
 
-    form.querySelectorAll('.lex').forEach(card=>{
-      const setsBox=card.querySelector('.sets');
-      const addBtn=card.querySelector('.addset');
-      addBtn.addEventListener('click',()=>{ const n=setsBox.querySelectorAll('.setrow').length+1; addBtn.insertAdjacentHTML('beforebegin', setRow(n,'','')); wireRemoves(setsBox); });
-      wireRemoves(setsBox);
-      const use=card.querySelector('.uselast');
-      if(use) use.addEventListener('click',()=>{ try{ fillSets(card, JSON.parse(card.dataset.last)); }catch(e){} });
+    form.querySelectorAll('.lex').forEach(wireCard);
+    document.getElementById('addExBtn').addEventListener('click',function(){
+      this.insertAdjacentHTML('beforebegin', exCard({n:'',unit:'load',sets:[{}]}));
+      wireCard(this.previousElementSibling);
+      this.previousElementSibling.querySelector('.lex-name-input').focus();
     });
     const pf=document.getElementById('prefillBtn');
     if(pf) pf.addEventListener('click',()=>{ form.querySelectorAll('.lex[data-last]').forEach(card=>{ try{ fillSets(card, JSON.parse(card.dataset.last)); }catch(e){} }); });
     document.getElementById('saveBtn').addEventListener('click',()=>saveSession(key));
-    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); });
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
     requestWake();
   }
 
@@ -664,19 +788,61 @@ service cloud.firestore {
     const status=document.getElementById('logStatus');
     const exercises=[];
     document.querySelectorAll('#logForm .lex').forEach(card=>{
-      const name=card.dataset.name;
+      const nameEl=card.querySelector('.lex-name-input');
+      const name=(nameEl?nameEl.value:'').trim();
+      const unit=card.dataset.unit||'load';
       const sets=[];
       card.querySelectorAll('.setrow').forEach(row=>{
-        const w=row.querySelector('[data-f=w]').value.trim();
-        const r=row.querySelector('[data-f=r]').value.trim();
-        if(w||r) sets.push({w,r});
+        if(unit==='time'){
+          const t=(row.querySelector('[data-f=t]')||{value:''}).value.trim();
+          if(t) sets.push({t});
+        } else {
+          const w=(row.querySelector('[data-f=w]')||{value:''}).value.trim();
+          const r=(row.querySelector('[data-f=r]')||{value:''}).value.trim();
+          if(w||r) sets.push({w,r});
+        }
       });
-      if(sets.length) exercises.push({n:name, sets});
+      if(name && sets.length) exercises.push({n:name, sets});
     });
-    if(!exercises.length){ status.style.color='var(--lift)'; status.textContent='Add at least one set first.'; return; }
+    if(!exercises.length){ status.style.color='var(--lift)'; status.textContent='Add a name and at least one set first.'; showToast('Nothing to save','Add a name and at least one set',true); return; }
     const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, exercises };
-    try{ await persist(entry); status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)'); releaseWake(); }
-    catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; }
+    try{
+      await persist(entry);
+      status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
+      showToast('Session saved', SPLITS[key].name+' · '+exercises.length+' exercise'+(exercises.length>1?'s':'')+(fb?' · synced to cloud':''));
+      releaseWake();
+    }
+    catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
+  }
+
+  // ---- save toast / popup ----
+  let toastTimer=null;
+  function showToast(title, sub, warn){
+    const wrap=document.getElementById('toastWrap'); if(!wrap) return;
+    wrap.innerHTML='<div class="toast'+(warn?' warn':'')+'"><div class="tick">'+(warn?'!':'✓')+'</div>'+
+      '<div><div class="tt">'+esc(title)+'</div>'+(sub?'<div class="ts">'+esc(sub)+'</div>':'')+'</div></div>';
+    const el=wrap.firstChild;
+    requestAnimationFrame(()=>el.classList.add('show'));
+    if(toastTimer) clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>{ if(wrap.firstChild===el) wrap.innerHTML=''; },360); }, 2800);
+  }
+
+  // ---- theme switcher ----
+  const THEMES=[{id:'aurora',label:'Aurora'},{id:'indigo',label:'Indigo'},{id:'sand',label:'Daylight'}];
+  const THEME_COLOR={aurora:'#0D1413',indigo:'#0A0C16',sand:'#F4F1EA'};
+  function readTheme(){ try{ return localStorage.getItem('trainingTheme')||'aurora'; }catch(e){ return 'aurora'; } }
+  function applyTheme(id){
+    const t=THEMES.some(x=>x.id===id)?id:'aurora';
+    if(t==='aurora') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme',t);
+    const nm=document.getElementById('themeName'); if(nm) nm.textContent=(THEMES.find(x=>x.id===t)||THEMES[0]).label;
+    const meta=document.querySelector('meta[name=theme-color]'); if(meta) meta.setAttribute('content',THEME_COLOR[t]);
+    try{ localStorage.setItem('trainingTheme',t); }catch(e){}
+  }
+  function initTheme(){
+    applyTheme(readTheme());
+    const btn=document.getElementById('themeBtn');
+    if(btn) btn.addEventListener('click',()=>{ const i=THEMES.findIndex(x=>x.id===readTheme()); applyTheme(THEMES[(i+1)%THEMES.length].id); });
   }
 
   // ---- reference sessions (generated from SPLITS) ----
@@ -713,6 +879,7 @@ service cloud.firestore {
   document.getElementById('nextM').addEventListener('click',()=>{ viewM++; if(viewM>11){viewM=0;viewY++;} renderCalendar(); });
   document.getElementById('todayBtn').addEventListener('click',()=>{ const t=new Date(); viewY=t.getFullYear(); viewM=t.getMonth(); selectedDate=iso(t); renderCalendar(); renderDayPanel(); });
 
+  initTheme();
   renderRefSessions();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW registration failed:', e)); });
