@@ -30,6 +30,12 @@
     --glow1:rgba(51,214,199,.10); --glow2:rgba(255,106,66,.09);
     --on-lift:#1A0E08;
     --radius:14px; --shadow:0 1px 0 rgba(0,0,0,.25), 0 20px 44px -24px rgba(0,0,0,.75);
+    /* glass / glow / texture (resolve per active theme) */
+    --glass: color-mix(in srgb, var(--paper-2) 82%, transparent);
+    --glass-2: color-mix(in srgb, var(--surface) 76%, transparent);
+    --hair: color-mix(in srgb, var(--ink) 11%, transparent);
+    --tex: color-mix(in srgb, var(--ink) 5%, transparent);
+    --glow-c: color-mix(in srgb, var(--lift) 30%, transparent);
   }
   /* === Indigo === */
   [data-theme="indigo"]{
@@ -135,6 +141,7 @@
   *{box-sizing:border-box}
   html{-webkit-text-size-adjust:100%}
   body{margin:0;background:
+      radial-gradient(circle at 1px 1px, var(--tex) 1px, transparent 1.7px) 0 0 / 23px 23px,
       radial-gradient(900px 520px at 88% -8%, var(--glow1), transparent 60%),
       radial-gradient(820px 540px at -5% 112%, var(--glow2), transparent 58%),
       var(--paper);
@@ -450,20 +457,100 @@
   .pr-item{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--lift-line);background:var(--lift-bg);border-radius:10px;padding:.5rem .7rem}
   .pr-item .pn{font-size:.82rem;font-weight:600;color:var(--ink)}
   .pr-item .pv{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--lift-text);white-space:nowrap}
+  /* ===== side menu / view nav ===== */
+  .topbar-left{display:flex;align-items:flex-start;gap:12px;min-width:0}
+  .menu-btn{flex-shrink:0;width:42px;height:42px;border-radius:11px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.15rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:transform .08s ease,border-color .15s,color .15s}
+  .menu-btn:hover{border-color:var(--lift);color:var(--lift-text)}
+  .menu-btn:active{transform:scale(.94)}
+  .drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s;z-index:70;backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+  .drawer-overlay.open{opacity:1;visibility:visible}
+  .drawer{position:fixed;top:0;left:0;bottom:0;width:266px;max-width:84vw;z-index:71;display:flex;flex-direction:column;gap:3px;
+    background:var(--paper-2);border-right:1px solid var(--line);box-shadow:0 0 60px -10px rgba(0,0,0,.6);
+    transform:translateX(-103%);transition:transform .26s cubic-bezier(.2,.8,.2,1);
+    padding:calc(18px + env(safe-area-inset-top)) 14px calc(18px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+  .drawer.open{transform:none}
+  .drawer-brand{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 6px 14px;margin-bottom:6px;border-bottom:1px solid var(--line-soft)}
+  .drawer-brand .bt{font-family:"Archivo",sans-serif;font-weight:900;font-size:1.05rem;color:var(--ink)}
+  .drawer-brand .bt span{color:var(--lift)}
+  .drawer-close{border:none;background:none;color:var(--ink-faint);font-size:1.2rem;cursor:pointer;width:32px;height:32px;border-radius:8px;line-height:1}
+  .drawer-close:hover{color:var(--lift-text);background:var(--lift-bg)}
+  .nav-item{display:flex;align-items:center;gap:13px;padding:.72rem .8rem;border-radius:11px;border:1px solid transparent;background:none;color:var(--ink-soft);font-family:"Archivo",sans-serif;font-weight:700;font-size:.96rem;cursor:pointer;width:100%;text-align:left;transition:background .14s,color .14s}
+  .nav-item:hover{background:var(--surface);color:var(--ink)}
+  .nav-item.on{background:var(--lift-bg);border-color:var(--lift-line);color:var(--lift-text)}
+  .nav-item .ic{font-size:1.15rem;width:1.5rem;text-align:center;flex-shrink:0}
+  .nav-foot{margin-top:auto;padding:10px 8px 2px;font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--ink-faint);border-top:1px solid var(--line-soft)}
   @media (max-width:680px){
     .stats{grid-template-columns:repeat(2,1fr)}
     .ex-select{max-width:100%}
     .hb{grid-template-columns:minmax(64px,96px) 1fr auto;gap:8px}
+    h1{font-size:clamp(1.6rem,7vw,2.2rem)}
   }
+
+  /* ===== glass + glow surfaces (all themes) ===== */
+  .cal,.day-panel,.acc,.card,.gate,.stat{
+    background:var(--paper-2);            /* fallback */
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(16px) saturate(1.35);
+    backdrop-filter:blur(16px) saturate(1.35);
+    box-shadow:var(--shadow), inset 0 1px 0 var(--hair), 0 0 38px -18px var(--glow-c);
+  }
+  .drawer,.theme-menu,.toast{
+    background:var(--paper-2);
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(20px) saturate(1.4);
+    backdrop-filter:blur(20px) saturate(1.4);
+    box-shadow:0 18px 50px -16px rgba(0,0,0,.55), inset 0 1px 0 var(--hair);
+  }
+  .lex,.note,.scard,.stat,.cal-cell,.split-btn,.menu-btn,.theme-btn{
+    background:var(--glass-2);
+  }
+  .btn{box-shadow:0 6px 18px -8px var(--glow-c), 0 0 22px -10px var(--glow-c)}
+  .stat .v,.bw-now{text-shadow:0 0 22px var(--glow-c)}
+
+  /* ===== Barbie background doodles ===== */
+  #bgDoodles{position:fixed;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;display:none}
+  [data-theme="barbie"] #bgDoodles{display:block}
+  [data-theme="barbie"]{ --tex: color-mix(in srgb, #EC158C 8%, transparent); --glow-c: color-mix(in srgb, #EC158C 36%, transparent); }
+
+  @media (prefers-reduced-motion:reduce){ .drawer{transition:none} }
 </style>
 </head>
 <body>
+<svg id="bgDoodles" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <pattern id="bdoodle" width="220" height="220" patternUnits="userSpaceOnUse" patternTransform="rotate(-8)">
+      <g fill="none" stroke="#EC158C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+        <path d="M34 58 c-9 -12 -27 -5 -27 9 c0 14 27 27 27 27 c0 0 27 -13 27 -27 c0 -14 -18 -21 -27 -9 z" fill="#EC158C" fill-opacity="0.14"/>
+        <path d="M168 34 c2 16 7 21 23 23 c-16 2 -21 7 -23 23 c-2 -16 -7 -21 -23 -23 c16 -2 21 -7 23 -23 z" fill="#A21CAF" fill-opacity="0.12" stroke="#A21CAF"/>
+        <path d="M112 128 l7 18 l19 1 l-15 12 l5 19 l-16 -10 l-16 10 l5 -19 l-15 -12 l19 -1 z" fill="#EC158C" fill-opacity="0.12"/>
+        <g transform="translate(56,168)"><path d="M0 0 l-20 -11 l0 22 z" fill="#EC158C" fill-opacity="0.14"/><path d="M0 0 l20 -11 l0 22 z" fill="#EC158C" fill-opacity="0.14"/><circle cx="0" cy="0" r="4.5"/></g>
+        <circle cx="188" cy="150" r="3.5" fill="#A21CAF" stroke="none"/>
+        <circle cx="20" cy="120" r="3.5" fill="#EC158C" stroke="none"/>
+        <path d="M150 95 c-5 -7 -16 -3 -16 5 c0 8 16 16 16 16 c0 0 16 -8 16 -16 c0 -8 -11 -12 -16 -5 z" fill="#A21CAF" fill-opacity="0.1" stroke="#A21CAF"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#bdoodle)"/>
+</svg>
 <div class="wrap">
 
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+  <aside class="drawer" id="drawer" aria-label="Sections">
+    <div class="drawer-brand">
+      <span class="bt">Training <span>Tracker</span></span>
+      <button type="button" class="drawer-close" id="drawerClose" aria-label="Close menu">✕</button>
+    </div>
+    <nav id="navList"></nav>
+    <div class="nav-foot">4-DAY SPLIT · TUE/WED/FRI/SAT</div>
+  </aside>
+
   <div class="topbar">
-    <div>
-      <p class="eyebrow">Training Tracker · 4-day split</p>
-      <h1>Log <span class="b">today.</span></h1>
+    <div class="topbar-left">
+      <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">☰</button>
+      <div>
+        <p class="eyebrow" id="eyebrow">Training log · 4-day split</p>
+        <h1 id="pageTitle">Log <span class="b">today.</span></h1>
+      </div>
     </div>
     <div class="topbar-right">
       <div class="theme-wrap" id="themeWrap">
@@ -505,25 +592,21 @@
 
   <!-- PROGRESS -->
   <section id="progress">
-    <div class="sec-head"><h2>Progress</h2><span class="idx">per exercise</span></div>
     <div class="card" id="progCard"></div>
   </section>
 
   <!-- BODYWEIGHT -->
   <section id="bodyweight">
-    <div class="sec-head"><h2>Bodyweight</h2><span class="idx">trend</span></div>
     <div class="card" id="bwCard"></div>
   </section>
 
   <!-- ANALYSIS REPORT -->
   <section id="report">
-    <div class="sec-head"><h2>Report</h2><span class="idx">analysis</span></div>
     <div class="card" id="reportCard"></div>
   </section>
 
   <!-- REFERENCE (collapsible) -->
   <section id="reference">
-    <div class="sec-head"><h2>The plan</h2><span class="idx">reference</span></div>
 
     <details class="acc">
       <summary>Weekly overview <span class="chev">▾</span></summary>
@@ -877,17 +960,18 @@ service cloud.firestore {
   async function signOutNow(){ try{ await fb.au.signOut(fb.auth); }catch(e){ console.error(e); } }
   function showErr(e){ const el=document.getElementById('gateErr'); const msg=(e&&e.message)?e.message:'Sign-in failed.'; if(el) el.textContent=msg; console.error(e); }
   function showGate(show){
-    const gate=document.getElementById('gate'); const tracker=document.getElementById('tracker');
-    if(!gate||!tracker) return;
-    const gated=['tracker','progress','bodyweight','report'].map(id=>document.getElementById(id)).filter(Boolean);
+    const gate=document.getElementById('gate'); if(!gate) return;
+    gated = !!show;
+    const mb=document.getElementById('menuBtn'); if(mb) mb.style.display = show?'none':'';
     if(show){
-      gated.forEach(s=>s.classList.add('hidden'));
+      applyView(); // gated=true hides every section
+      closeDrawer();
       gate.innerHTML='<div class="gate"><h3>Sign in to your training log</h3>'+
         '<p>Your sessions save to your Google account and sync across every device you sign in on.</p>'+
         '<button class="gbtn" type="button" id="signinBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg> Continue with Google</button>'+
         '<div class="err" id="gateErr"></div></div>';
       const b=document.getElementById('signinBtn'); if(b) b.onclick=signInNow;
-    } else { gated.forEach(s=>s.classList.remove('hidden')); gate.innerHTML=''; }
+    } else { gate.innerHTML=''; applyView(); }
   }
 
   // ---- calendar ----
@@ -1147,6 +1231,44 @@ service cloud.firestore {
     document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeThemeMenu(); });
   }
 
+  // ---- side menu / single-view navigation ----
+  const VIEWS=[
+    {id:'tracker',    label:'Today',      ic:'📅', eyebrow:'Training log · 4-day split', h1:'Log <span class="b">today.</span>'},
+    {id:'progress',   label:'Progress',   ic:'📈', eyebrow:'Progress · per exercise',    h1:'Your <span class="b">progress.</span>'},
+    {id:'bodyweight', label:'Bodyweight', ic:'⚖️', eyebrow:'Bodyweight · trend',          h1:'<span class="b">Bodyweight.</span>'},
+    {id:'report',     label:'Report',     ic:'📊', eyebrow:'Report · analysis',           h1:'Your <span class="b">report.</span>'},
+    {id:'reference',  label:'The Plan',   ic:'📋', eyebrow:'Reference · the plan',        h1:'The <span class="b">plan.</span>'}
+  ];
+  let view='tracker';
+  let gated=false;
+  function buildNav(){
+    const nav=document.getElementById('navList'); if(!nav) return;
+    nav.innerHTML=VIEWS.map(v=>'<button type="button" class="nav-item'+(v.id===view?' on':'')+'" data-v="'+v.id+'"><span class="ic" aria-hidden="true">'+v.ic+'</span>'+v.label+'</button>').join('');
+    nav.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+  }
+  function applyView(){
+    VIEWS.forEach(v=>{ const s=document.getElementById(v.id); if(s) s.classList.toggle('hidden', gated || v.id!==view); });
+    const cur=VIEWS.find(v=>v.id===view)||VIEWS[0];
+    const eb=document.getElementById('eyebrow'); if(eb) eb.textContent=cur.eyebrow;
+    const h1=document.getElementById('pageTitle'); if(h1) h1.innerHTML=cur.h1;
+    const nav=document.getElementById('navList'); if(nav) nav.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
+  }
+  function setView(name){
+    if(VIEWS.some(v=>v.id===name)) view=name;
+    applyView(); closeDrawer();
+    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+  }
+  function openDrawer(){ const d=document.getElementById('drawer'),o=document.getElementById('drawerOverlay'),b=document.getElementById('menuBtn'); if(d)d.classList.add('open'); if(o)o.classList.add('open'); if(b)b.setAttribute('aria-expanded','true'); }
+  function closeDrawer(){ const d=document.getElementById('drawer'),o=document.getElementById('drawerOverlay'),b=document.getElementById('menuBtn'); if(d)d.classList.remove('open'); if(o)o.classList.remove('open'); if(b)b.setAttribute('aria-expanded','false'); }
+  function initNav(){
+    buildNav();
+    const b=document.getElementById('menuBtn'); if(b) b.onclick=openDrawer;
+    const c=document.getElementById('drawerClose'); if(c) c.onclick=closeDrawer;
+    const o=document.getElementById('drawerOverlay'); if(o) o.onclick=closeDrawer;
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
+    applyView();
+  }
+
   // ---- reference sessions (generated from SPLITS) ----
   function renderRefSessions(){
     const wrap=document.getElementById('refSessions'); if(wrap.childElementCount) return;
@@ -1342,6 +1464,7 @@ service cloud.firestore {
   document.getElementById('todayBtn').addEventListener('click',()=>{ const t=new Date(); viewY=t.getFullYear(); viewM=t.getMonth(); selectedDate=iso(t); renderCalendar(); renderDayPanel(); });
 
   initTheme();
+  initNav();
   renderRefSessions();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW registration failed:', e)); });
