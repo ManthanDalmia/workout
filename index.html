@@ -1422,9 +1422,10 @@ service cloud.firestore {
     try{ const el=document.getElementById('hapticSwitch'); if(el) el.click(); }catch(e){}
   }
   function initHaptics(){
+    // only important actions: save/delete, session pick, calendar day, menu nav, sign-in
     document.addEventListener('click', e=>{
       const t=e.target;
-      if(t && t.closest && t.closest('button, summary, .cal-cell, .nav-item, .theme-opt')) haptic();
+      if(t && t.closest && t.closest('.btn, .gbtn, .split-btn, .cal-cell, .nav-item')) haptic();
     }, true);
   }
 
