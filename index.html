@@ -201,6 +201,13 @@
   .note-input{width:100%;font-family:"Inter",sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);background:var(--glass-2);border:1px solid var(--line);border-radius:11px;padding:.75rem .85rem;resize:vertical;min-height:104px}
   .note-input::placeholder{color:var(--ink-faint)}
   .note-input:focus{outline:2px solid var(--aero);outline-offset:1px;border-color:var(--aero)}
+  .run-form{margin-top:18px}
+  .run-row{display:flex;gap:10px;flex-wrap:wrap}
+  .run-fld{flex:1;min-width:130px}
+  .run-fld .label{margin-bottom:6px}
+  .run-fld input{width:100%;font-family:"JetBrains Mono",monospace;font-size:.9rem;border:1px solid var(--line);border-radius:9px;padding:.55rem .7rem;background:var(--glass-2);color:var(--ink)}
+  .run-fld input:focus{outline:2px solid var(--aero);outline-offset:1px;border-color:var(--aero)}
+  .run-pace{font-family:"JetBrains Mono",monospace;font-size:.82rem;color:var(--aero-text);margin-top:10px}
   .split-btn{font-family:"Archivo",sans-serif;font-weight:700;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.5rem .95rem;cursor:pointer;transition:.15s}
   .split-btn:hover{border-color:var(--lift);color:var(--ink)}
   .split-btn.active{background:var(--lift);border-color:var(--lift);color:var(--on-lift);box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
@@ -768,11 +775,16 @@ service cloud.firestore {
     'adidas-full': { name:'Adidas Strength · Full body', day:'Class', focus:'Full-body strength class', time:'~45 min', note:true,
       tip:'Logged as a quick note.' },
     'boxing': { name:'Boxing', day:'Class', focus:'Boxing · conditioning', time:'~60 min', note:true,
-      tip:'Logged as a quick note — rounds, drills, how you felt.' }
+      tip:'Logged as a quick note — rounds, drills, how you felt.' },
+
+    'run-indoor':  { name:'Indoor run · Treadmill', day:'Cardio', focus:'Treadmill running', run:true,
+      tip:'Log distance and time — your pace is worked out for you.' },
+    'run-outdoor': { name:'Outdoor run', day:'Cardio', focus:'Outdoor running', run:true,
+      tip:'Log distance and time — your pace is worked out for you.' }
   };
   const GYM_DOWS = [2,3,5,6]; // Tue, Wed, Fri, Sat
-  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing'];
-  function splitCat(k){ if(String(k).startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; return 'Gym split'; }
+  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing','Running'];
+  function splitCat(k){ k=String(k); if(k.startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; if(k.startsWith('run')) return 'Running'; return 'Gym split'; }
 
   // ---- state ----
   let LOGS = [];                 // [{id,date,split,splitName,exercises:[{n,sets:[{w,r}]}]}]
@@ -1061,6 +1073,52 @@ service cloud.firestore {
     requestWake();
   }
 
+  function parseDurSec(s){ s=String(s||'').trim(); if(!s) return 0; if(s.indexOf(':')>=0){ const p=s.split(':').map(Number); if(p.some(isNaN)) return 0; return p.reduce((a,b)=>a*60+b,0); } const m=parseFloat(s); return isNaN(m)?0:m*60; }
+  function fmtPace(km,durStr){ const sec=parseDurSec(durStr), k=parseFloat(km); if(!(sec>0)||!(k>0)) return '—'; const p=sec/k, mm=Math.floor(p/60), ss=Math.round(p%60); return mm+':'+String(ss).padStart(2,'0')+' /km'; }
+
+  function buildRunForm(key, entry){
+    const last=lastSessionBefore(key, selectedDate);
+    const km = entry&&entry.km!=null ? entry.km : '';
+    const dur = entry&&entry.dur!=null ? entry.dur : '';
+    const note = entry&&entry.note ? entry.note : '';
+    const lastLine = (last && (last.km||last.dur)) ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc((last.km?last.km+' km':''))+(last.dur?' · '+esc(last.dur):'')+'</b> '+(fmtPace(last.km,last.dur)!=='—'?'· '+fmtPace(last.km,last.dur):'')+'</div>' : '';
+    const h='<div class="run-form">'+ lastLine+
+        '<div class="run-row">'+
+          '<div class="run-fld"><div class="label">Distance (km)</div><input id="runKm" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 5.0" value="'+esc(km)+'"></div>'+
+          '<div class="run-fld"><div class="label">Duration</div><input id="runDur" type="text" inputmode="numeric" placeholder="min or mm:ss" value="'+esc(dur)+'"></div>'+
+        '</div>'+
+        '<div class="run-pace" id="runPace">Pace —</div>'+
+        '<div class="label" style="margin-top:12px">Note</div>'+
+        '<textarea id="runNote" class="note-input" rows="3" placeholder="Route, effort, how you felt…">'+esc(note)+'</textarea>'+
+        '<div class="log-actions">'+
+          '<button type="button" class="btn" id="saveBtn">Save session</button>'+
+          (entry?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
+          '<span class="log-status" id="logStatus"></span></div>'+
+      '</div>';
+    const form=document.getElementById('logForm'); form.innerHTML=h;
+    const upd=()=>{ document.getElementById('runPace').textContent='Pace '+fmtPace(document.getElementById('runKm').value, document.getElementById('runDur').value); };
+    ['runKm','runDur'].forEach(id=>document.getElementById(id).addEventListener('input',upd)); upd();
+    document.getElementById('saveBtn').addEventListener('click',()=>saveRun(key));
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    requestWake();
+  }
+
+  async function saveRun(key){
+    const status=document.getElementById('logStatus');
+    const km=document.getElementById('runKm').value.trim();
+    const dur=document.getElementById('runDur').value.trim();
+    const note=document.getElementById('runNote').value.trim();
+    const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, km, dur, note };
+    try{
+      await persist(entry);
+      status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
+      const pace=fmtPace(km,dur);
+      const bits=[km?km+' km':'', dur?dur:'', pace!=='—'?pace:''].filter(Boolean).join(' · ');
+      showToast('Run saved', bits||SPLITS[key].name+' · marked done');
+      releaseWake();
+    }catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
+  }
+
   async function saveNote(key){
     const status=document.getElementById('logStatus');
     const note=(document.getElementById('noteInput').value||'').trim();
@@ -1141,6 +1199,7 @@ service cloud.firestore {
 
   function buildForm(key, entry){
     const sp=SPLITS[key];
+    if(sp.run){ buildRunForm(key, entry); return; }
     if(sp.note){ buildNoteForm(key, entry); return; }
     const existing = entry ? entry.exercises : null;
     const last=lastSessionBefore(key, selectedDate);
@@ -1333,9 +1392,10 @@ service cloud.firestore {
       const s=SPLITS[k];
       const head='<div style="font-family:Archivo;font-weight:800;font-size:1.05rem">'+esc(s.name)+' <span style="color:var(--ink-faint);font-family:JetBrains Mono;font-size:.7rem;font-weight:500">'+esc(s.day)+'</span></div>'+
         '<div class="rsub">'+esc(s.focus)+'</div>';
-      if(s.note){
+      if(s.note||s.run){
+        const meta=(s.time?'<span class="m">'+esc(s.time)+'</span>':'')+'<span class="m">'+(s.run?'distance &amp; time':'note only')+'</span>';
         return '<div style="margin-bottom:18px">'+head+
-          '<div class="rmeta"><span class="m">'+esc(s.time)+'</span><span class="m">note only</span></div>'+
+          '<div class="rmeta">'+meta+'</div>'+
           '<div class="rtip">'+esc(s.tip)+'</div></div>';
       }
       const rows=(s.ex||[]).map(e=>'<div class="rex"><div><div class="rn">'+esc(e.n)+'</div><div class="rc">'+esc(e.c)+'</div></div><div class="rs">'+esc(e.t)+'</div></div>').join('');
@@ -1479,6 +1539,7 @@ service cloud.firestore {
     const avgK = avgVol>=1000 ? (avgVol/1000).toFixed(1)+'k' : Math.round(avgVol);
     const bw=BW.filter(b=>isNum(b.kg)&&b.date>=startS&&b.date<=todayS).sort((a,b)=>a.date.localeCompare(b.date));
     const bwChange = bw.length>1 ? round1(num(bw[bw.length-1].kg)-num(bw[0].kg)) : null;
+    const runKm = logs.reduce((a,e)=>{ const sp=SPLITS[e.split]; return a + (sp&&sp.run&&isNum(e.km)?parseFloat(e.km):0); }, 0);
 
     // weekly volume series
     const nWk=Math.max(1,Math.ceil(spanDays/7));
@@ -1507,6 +1568,7 @@ service cloud.firestore {
         '<div class="stat"><div class="v">'+adherence+'%</div><div class="k">Adherence · 4/wk</div></div>'+
         '<div class="stat"><div class="v">'+volK+'</div><div class="k">Total vol (kg)</div></div>'+
         '<div class="stat"><div class="v cy">'+avgK+'</div><div class="k">Avg / session</div></div>'+
+        (runKm>0?'<div class="stat"><div class="v cy">'+round1(runKm)+'</div><div class="k">Distance (km)</div></div>':'')+
         (bwChange!=null?'<div class="stat"><div class="v">'+(bwChange>0?'+':'')+bwChange+'</div><div class="k">Bodyweight Δ (kg)</div></div>':'')+
       '</div>'+
       '<div class="rsub-h">Weekly volume</div>'+ lineChart(wk.map(round1)) +
