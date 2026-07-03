@@ -153,6 +153,8 @@
   .eyebrow{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--aero);font-weight:500;margin:0 0 .35rem}
   h1{font-family:"Archivo",sans-serif;font-weight:900;font-size:clamp(1.9rem,5vw,2.8rem);line-height:.96;letter-spacing:-.02em;margin:0}
   h1 .b{color:var(--lift)}
+  .tagline{font-family:"Inter",sans-serif;font-size:.9rem;font-weight:500;color:var(--ink-soft);margin:.45rem 0 0}
+  .tagline .up{color:var(--lift);font-weight:700}
   .sync{font-family:"JetBrains Mono",monospace;font-size:.64rem;border:1px solid var(--line);border-radius:999px;padding:.3rem .6rem;color:var(--ink-soft);white-space:nowrap;background:var(--surface)}
   .sync.cloud{color:var(--aero-text);border-color:var(--aero-line);background:var(--aero-bg)}
   .sync.session{color:var(--lift-text);border-color:var(--lift-line);background:var(--lift-bg)}
@@ -574,8 +576,9 @@
     <div class="topbar-left">
       <button type="button" class="menu-btn" id="menuBtn" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">☰</button>
       <div>
-        <p class="eyebrow" id="eyebrow">GodSpeed · onwards &amp; upwards</p>
+        <p class="eyebrow" id="eyebrow">GodSpeed</p>
         <h1 id="pageTitle">Log <span class="b">today.</span></h1>
+        <p class="tagline" id="tagline">Onwards &amp; upwards <span class="up">↑</span></p>
       </div>
     </div>
     <div class="topbar-right">
@@ -1483,11 +1486,11 @@ service cloud.firestore {
 
   // ---- side menu / single-view navigation ----
   const VIEWS=[
-    {id:'tracker',    label:'Today',      ic:'📅', eyebrow:'GodSpeed · onwards & upwards', h1:'Log <span class="b">today.</span>'},
-    {id:'progress',   label:'Progress',   ic:'📈', eyebrow:'Progress · per exercise',    h1:'Your <span class="b">progress.</span>'},
-    {id:'bodyweight', label:'Bodyweight', ic:'⚖️', eyebrow:'Bodyweight · trend',          h1:'<span class="b">Bodyweight.</span>'},
-    {id:'report',     label:'Report',     ic:'📊', eyebrow:'Report · analysis',           h1:'Your <span class="b">report.</span>'},
-    {id:'reference',  label:'The Plan',   ic:'📋', eyebrow:'Reference · the plan',        h1:'The <span class="b">plan.</span>'}
+    {id:'tracker',    label:'Today',      ic:'📅', eyebrow:'GodSpeed',              h1:'Log <span class="b">today.</span>',        tag:'Onwards &amp; upwards <span class="up">↑</span>'},
+    {id:'progress',   label:'Progress',   ic:'📈', eyebrow:'Progress · per exercise', h1:'Your <span class="b">progress.</span>'},
+    {id:'bodyweight', label:'Bodyweight', ic:'⚖️', eyebrow:'Bodyweight · trend',      h1:'<span class="b">Bodyweight.</span>'},
+    {id:'report',     label:'Report',     ic:'📊', eyebrow:'Report · analysis',       h1:'Your <span class="b">report.</span>'},
+    {id:'reference',  label:'The Plan',   ic:'📋', eyebrow:'Reference · the plan',    h1:'The <span class="b">plan.</span>'}
   ];
   let view='tracker';
   let gated=false;
@@ -1501,6 +1504,7 @@ service cloud.firestore {
     const cur=VIEWS.find(v=>v.id===view)||VIEWS[0];
     const eb=document.getElementById('eyebrow'); if(eb) eb.textContent=cur.eyebrow;
     const h1=document.getElementById('pageTitle'); if(h1) h1.innerHTML=cur.h1;
+    const tg=document.getElementById('tagline'); if(tg){ tg.innerHTML=cur.tag||''; tg.style.display=cur.tag?'':'none'; }
     const nav=document.getElementById('navList'); if(nav) nav.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('on',b.dataset.v===view));
   }
   function setView(name){
