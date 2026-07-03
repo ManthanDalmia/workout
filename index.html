@@ -777,8 +777,8 @@ service cloud.firestore {
     'boxing': { name:'Boxing', day:'Class', focus:'Boxing · conditioning', time:'~60 min', note:true,
       tip:'Logged as a quick note — rounds, drills, how you felt.' },
 
-    'run-indoor':  { name:'Indoor run · Treadmill', day:'Cardio', focus:'Treadmill running', run:true,
-      tip:'Log distance and time — your pace is worked out for you.' },
+    'run-indoor':  { name:'Indoor run · Treadmill', day:'Cardio', focus:'Treadmill running', run:true, segs:true,
+      tip:'Log each speed you ran at and for how long — distance and pace are worked out for you.' },
     'run-outdoor': { name:'Outdoor run', day:'Cardio', focus:'Outdoor running', run:true,
       tip:'Log distance and time — your pace is worked out for you.' }
   };
@@ -1075,8 +1075,11 @@ service cloud.firestore {
 
   function parseDurSec(s){ s=String(s||'').trim(); if(!s) return 0; if(s.indexOf(':')>=0){ const p=s.split(':').map(Number); if(p.some(isNaN)) return 0; return p.reduce((a,b)=>a*60+b,0); } const m=parseFloat(s); return isNaN(m)?0:m*60; }
   function fmtPace(km,durStr){ const sec=parseDurSec(durStr), k=parseFloat(km); if(!(sec>0)||!(k>0)) return '—'; const p=sec/k, mm=Math.floor(p/60), ss=Math.round(p%60); return mm+':'+String(ss).padStart(2,'0')+' /km'; }
+  function fmtDurFromSec(sec){ sec=Math.round(sec); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; return (h?h+':'+String(m).padStart(2,'0'):String(m))+':'+String(s).padStart(2,'0'); }
+  function fmtPaceSec(sec,km){ if(!(sec>0)||!(km>0)) return '—'; const p=sec/km, mm=Math.floor(p/60), ss=Math.round(p%60); return mm+':'+String(ss).padStart(2,'0')+' /km'; }
 
   function buildRunForm(key, entry){
+    if(SPLITS[key].segs){ buildIntervalForm(key, entry); return; }
     const last=lastSessionBefore(key, selectedDate);
     const km = entry&&entry.km!=null ? entry.km : '';
     const dur = entry&&entry.dur!=null ? entry.dur : '';
@@ -1103,18 +1106,82 @@ service cloud.firestore {
     requestWake();
   }
 
+  function segRow(idx, s){
+    s=s||{};
+    return '<div class="setrow"><span class="sn">Seg '+idx+'</span>'+
+      '<input type="text" inputmode="decimal" data-f="spd" placeholder="km/h" value="'+esc(s.spd||'')+'">'+
+      '<input type="text" inputmode="numeric" data-f="dur" placeholder="min or mm:ss" value="'+esc(s.dur||'')+'">'+
+      '<button type="button" class="rm" aria-label="Remove segment">×</button></div>';
+  }
+  function segTotals(box){
+    let km=0, sec=0;
+    box.querySelectorAll('.setrow').forEach(r=>{
+      const spd=parseFloat((r.querySelector('[data-f=spd]')||{value:''}).value);
+      const ds=parseDurSec((r.querySelector('[data-f=dur]')||{value:''}).value);
+      if(spd>0 && ds>0){ km+=spd*ds/3600; sec+=ds; }
+    });
+    return { km, sec };
+  }
+  function buildIntervalForm(key, entry){
+    const sp=SPLITS[key];
+    const last=lastSessionBefore(key, selectedDate);
+    const segs = (entry&&entry.segs&&entry.segs.length) ? entry.segs : [{}];
+    const note = entry&&entry.note ? entry.note : '';
+    const lastLine = (last && last.km) ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc(last.km)+' km'+(last.dur?' · '+esc(last.dur):'')+'</b> '+(fmtPace(last.km,last.dur)!=='—'?'· '+fmtPace(last.km,last.dur):'')+'</div>' : '';
+    const h='<div class="run-form">'+ lastLine+
+        '<div class="label">Treadmill segments — speed × time</div>'+
+        '<div class="sets" id="segBox">'+ segs.map((s,i)=>segRow(i+1,s)).join('') +
+          '<button type="button" class="addset" id="addSeg">+ add segment</button>'+
+        '</div>'+
+        '<div class="run-pace" id="runSummary">—</div>'+
+        '<div class="label" style="margin-top:12px">Note</div>'+
+        '<textarea id="runNote" class="note-input" rows="2" placeholder="Intervals, incline, how you felt…">'+esc(note)+'</textarea>'+
+        '<div class="log-actions">'+
+          '<button type="button" class="btn" id="saveBtn">Save session</button>'+
+          (entry?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
+          '<span class="log-status" id="logStatus"></span></div>'+
+      '</div>';
+    const form=document.getElementById('logForm'); form.innerHTML=h;
+    const box=document.getElementById('segBox');
+    const addBtn=document.getElementById('addSeg');
+    const renum=()=>box.querySelectorAll('.setrow .sn').forEach((el,i)=>el.textContent='Seg '+(i+1));
+    const summary=()=>{ const t=segTotals(box); document.getElementById('runSummary').textContent = t.km>0 ? 'Total '+(Math.round(t.km*100)/100)+' km · '+fmtDurFromSec(t.sec)+' · '+fmtPaceSec(t.sec,t.km) : '—'; };
+    const wireRm=()=>box.querySelectorAll('.rm').forEach(btn=>btn.onclick=()=>{ if(box.querySelectorAll('.setrow').length<=1) return; btn.closest('.setrow').remove(); renum(); summary(); });
+    addBtn.addEventListener('click',()=>{ const n=box.querySelectorAll('.setrow').length+1; addBtn.insertAdjacentHTML('beforebegin', segRow(n,{})); wireRm(); summary(); });
+    box.addEventListener('input', summary);
+    wireRm(); summary();
+    document.getElementById('saveBtn').addEventListener('click',()=>saveRun(key));
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    requestWake();
+  }
+
   async function saveRun(key){
+    const sp=SPLITS[key];
     const status=document.getElementById('logStatus');
-    const km=document.getElementById('runKm').value.trim();
-    const dur=document.getElementById('runDur').value.trim();
     const note=document.getElementById('runNote').value.trim();
-    const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, km, dur, note };
+    let entry, km, dur;
+    if(sp.segs){
+      const segs=[];
+      document.querySelectorAll('#segBox .setrow').forEach(r=>{
+        const spd=(r.querySelector('[data-f=spd]')||{value:''}).value.trim();
+        const d=(r.querySelector('[data-f=dur]')||{value:''}).value.trim();
+        if(spd||d) segs.push({spd, dur:d});
+      });
+      const t=segTotals(document.getElementById('segBox'));
+      km = t.km>0 ? String(Math.round(t.km*100)/100) : '';
+      dur = t.sec>0 ? fmtDurFromSec(t.sec) : '';
+      entry={ id:selectedDate, date:selectedDate, split:key, splitName:sp.name, segs, km, dur, note };
+    } else {
+      km=document.getElementById('runKm').value.trim();
+      dur=document.getElementById('runDur').value.trim();
+      entry={ id:selectedDate, date:selectedDate, split:key, splitName:sp.name, km, dur, note };
+    }
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
       const pace=fmtPace(km,dur);
       const bits=[km?km+' km':'', dur?dur:'', pace!=='—'?pace:''].filter(Boolean).join(' · ');
-      showToast('Run saved', bits||SPLITS[key].name+' · marked done');
+      showToast('Run saved', bits||sp.name+' · marked done');
       releaseWake();
     }catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
   }
