@@ -197,6 +197,10 @@
   .pick-group{margin-bottom:12px}
   .pick-group:last-child{margin-bottom:0}
   .pick-cat{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px}
+  .note-form{margin-top:18px}
+  .note-input{width:100%;font-family:"Inter",sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);background:var(--glass-2);border:1px solid var(--line);border-radius:11px;padding:.75rem .85rem;resize:vertical;min-height:104px}
+  .note-input::placeholder{color:var(--ink-faint)}
+  .note-input:focus{outline:2px solid var(--aero);outline-offset:1px;border-color:var(--aero)}
   .split-btn{font-family:"Archivo",sans-serif;font-weight:700;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.5rem .95rem;cursor:pointer;transition:.15s}
   .split-btn:hover{border-color:var(--lift);color:var(--ink)}
   .split-btn.active{background:var(--lift);border-color:var(--lift);color:var(--on-lift);box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
@@ -347,7 +351,7 @@
 
   /* iOS: inputs ≥16px to stop Safari auto-zoom on focus */
   @media (max-width:680px){
-    .setrow input, .field input, input[type=date], input[type=text], input[type=number]{font-size:16px}
+    .setrow input, .field input, input[type=date], input[type=text], input[type=number], .note-input{font-size:16px}
     .stat .v{font-size:1.35rem}
   }
   @media (prefers-reduced-motion:reduce){
@@ -757,43 +761,14 @@ service cloud.firestore {
         {n:'Dumbbell hammer curl', t:'3 × 10–12', c:'Neutral grip, hits the brachialis.'}
       ]},
 
-    'adidas-upper': { name:'Adidas Strength · Upper', day:'Class', focus:'Upper-body strength class', time:'~45 min',
-      tip:'Log the main moves from the class — add, rename or remove exercises to match what you actually did.',
-      ex:[
-        {n:'Chest press', t:'3 × 10–12', c:'Barbell or dumbbell, controlled tempo.'},
-        {n:'Shoulder press', t:'3 × 10–12', c:'Brace the core, press overhead.'},
-        {n:'Bent-over row', t:'3 × 10–12', c:'Flat back, pull to the ribs.'},
-        {n:'Lateral raise', t:'3 × 12–15', c:'Light, controlled.'},
-        {n:'Biceps curl', t:'3 × 12', c:'No swinging.'},
-        {n:'Triceps extension', t:'3 × 12', c:'Full lockout.'}
-      ]},
-    'adidas-lower': { name:'Adidas Strength · Lower', day:'Class', focus:'Lower-body strength class', time:'~45 min',
-      tip:'Log the main lifts — edit the list to match the class.',
-      ex:[
-        {n:'Back squat', t:'3 × 10–12', c:'Depth and control.'},
-        {n:'Romanian deadlift', t:'3 × 10–12', c:'Hinge, feel the hamstrings.'},
-        {n:'Walking lunge', t:'3 × 12 ea', c:'Upright torso.'},
-        {n:'Hip thrust', t:'3 × 12–15', c:'Squeeze glutes at the top.'},
-        {n:'Calf raise', t:'3 × 15–20', c:'Full range.'}
-      ]},
-    'adidas-full': { name:'Adidas Strength · Full body', day:'Class', focus:'Full-body strength class', time:'~45 min',
-      tip:'A mix of push, pull, legs and core — edit to match the class.',
-      ex:[
-        {n:'Squat', t:'3 × 10–12', c:'Legs.'},
-        {n:'Chest press', t:'3 × 10–12', c:'Push.'},
-        {n:'Row', t:'3 × 10–12', c:'Pull.'},
-        {n:'Deadlift', t:'3 × 10', c:'Hinge.'},
-        {n:'Shoulder press', t:'3 × 10–12', c:'Overhead.'},
-        {n:'Core circuit', t:'3 × 40s', u:'time', c:'Plank / mountain climbers.'}
-      ]},
-    'boxing': { name:'Boxing', day:'Class', focus:'Boxing · conditioning', time:'~60 min',
-      tip:'Log rounds by time. Use “time” entries for rounds; add custom entries for anything else.',
-      ex:[
-        {n:'Warm-up & skipping', t:'3 × 3 min', u:'time', c:'Rope + shadow boxing.'},
-        {n:'Bag work', t:'5 × 3 min', u:'time', c:'Combos, keep the guard up.'},
-        {n:'Pad / technique', t:'4 × 3 min', u:'time', c:'Sharp technique over power.'},
-        {n:'Conditioning', t:'3 × 2 min', u:'time', c:'Core / circuits to finish.'}
-      ]}
+    'adidas-upper': { name:'Adidas Strength · Upper', day:'Class', focus:'Upper-body strength class', time:'~45 min', note:true,
+      tip:'Logged as a quick note — jot down what you did and how it felt.' },
+    'adidas-lower': { name:'Adidas Strength · Lower', day:'Class', focus:'Lower-body strength class', time:'~45 min', note:true,
+      tip:'Logged as a quick note.' },
+    'adidas-full': { name:'Adidas Strength · Full body', day:'Class', focus:'Full-body strength class', time:'~45 min', note:true,
+      tip:'Logged as a quick note.' },
+    'boxing': { name:'Boxing', day:'Class', focus:'Boxing · conditioning', time:'~60 min', note:true,
+      tip:'Logged as a quick note — rounds, drills, how you felt.' }
   };
   const GYM_DOWS = [2,3,5,6]; // Tue, Wed, Fri, Sat
   const CAT_ORDER = ['Gym split','Adidas Strength','Boxing'];
@@ -1062,9 +1037,40 @@ service cloud.firestore {
       panel.querySelectorAll('#splitPick .split-btn').forEach(x=>x.classList.remove('active'));
       b.classList.add('active');
       const e2=entryFor(selectedDate);
-      buildForm(b.dataset.k, e2&&e2.split===b.dataset.k?e2.exercises:null);
+      buildForm(b.dataset.k, e2&&e2.split===b.dataset.k?e2:null);
     }));
-    if(entry) buildForm(entry.split, entry.exercises);
+    if(entry) buildForm(entry.split, entry);
+  }
+
+  function buildNoteForm(key, entry){
+    const last=lastSessionBefore(key, selectedDate);
+    const val = entry && entry.note ? entry.note : '';
+    const lastLine = (last && last.note) ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc(last.note)+'</b> <button type="button" class="usenote">use</button></div>' : '';
+    const h='<div class="note-form">'+
+        '<div class="label">Session note</div>'+ lastLine+
+        '<textarea id="noteInput" class="note-input" rows="5" placeholder="How did it go? Rounds, drills, weights, how you felt…">'+esc(val)+'</textarea>'+
+        '<div class="log-actions">'+
+          '<button type="button" class="btn" id="saveBtn">Save session</button>'+
+          (entry?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
+          '<span class="log-status" id="logStatus"></span></div>'+
+      '</div>';
+    const form=document.getElementById('logForm'); form.innerHTML=h;
+    const use=form.querySelector('.usenote'); if(use) use.onclick=()=>{ document.getElementById('noteInput').value = last.note; };
+    document.getElementById('saveBtn').addEventListener('click',()=>saveNote(key));
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    requestWake();
+  }
+
+  async function saveNote(key){
+    const status=document.getElementById('logStatus');
+    const note=(document.getElementById('noteInput').value||'').trim();
+    const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, note };
+    try{
+      await persist(entry);
+      status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
+      showToast('Session saved', SPLITS[key].name+(note?'':' · marked done')+(fb?' · synced to cloud':''));
+      releaseWake();
+    }catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
   }
 
   function setRow(idx, s, unit){
@@ -1133,8 +1139,10 @@ service cloud.firestore {
     }));
   }
 
-  function buildForm(key, existing){
+  function buildForm(key, entry){
     const sp=SPLITS[key];
+    if(sp.note){ buildNoteForm(key, entry); return; }
+    const existing = entry ? entry.exercises : null;
     const last=lastSessionBefore(key, selectedDate);
     const lastFor=name=> last?(last.exercises||[]).find(x=>x.n===name):null;
     const list=[];
@@ -1323,9 +1331,16 @@ service cloud.firestore {
     const wrap=document.getElementById('refSessions'); if(wrap.childElementCount) return;
     wrap.innerHTML = Object.keys(SPLITS).map(k=>{
       const s=SPLITS[k];
-      const rows=s.ex.map(e=>'<div class="rex"><div><div class="rn">'+esc(e.n)+'</div><div class="rc">'+esc(e.c)+'</div></div><div class="rs">'+esc(e.t)+'</div></div>').join('');
-      return '<div style="margin-bottom:18px"><div style="font-family:Archivo;font-weight:800;font-size:1.05rem">'+s.name+' <span style="color:var(--ink-faint);font-family:JetBrains Mono;font-size:.7rem;font-weight:500">'+s.day+'</span></div>'+
-        '<div class="rsub">'+esc(s.focus)+'</div><div class="rmeta"><span class="m">'+s.time+'</span><span class="m">'+s.ex.length+' exercises</span></div>'+
+      const head='<div style="font-family:Archivo;font-weight:800;font-size:1.05rem">'+esc(s.name)+' <span style="color:var(--ink-faint);font-family:JetBrains Mono;font-size:.7rem;font-weight:500">'+esc(s.day)+'</span></div>'+
+        '<div class="rsub">'+esc(s.focus)+'</div>';
+      if(s.note){
+        return '<div style="margin-bottom:18px">'+head+
+          '<div class="rmeta"><span class="m">'+esc(s.time)+'</span><span class="m">note only</span></div>'+
+          '<div class="rtip">'+esc(s.tip)+'</div></div>';
+      }
+      const rows=(s.ex||[]).map(e=>'<div class="rex"><div><div class="rn">'+esc(e.n)+'</div><div class="rc">'+esc(e.c)+'</div></div><div class="rs">'+esc(e.t)+'</div></div>').join('');
+      return '<div style="margin-bottom:18px">'+head+
+        '<div class="rmeta"><span class="m">'+esc(s.time)+'</span><span class="m">'+(s.ex||[]).length+' exercises</span></div>'+
         rows+'<div class="rtip">'+esc(s.tip)+'</div></div>';
     }).join('');
   }
