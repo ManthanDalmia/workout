@@ -194,6 +194,9 @@
   .chip-ok{font-family:"JetBrains Mono",monospace;font-size:.62rem;background:var(--lift);color:var(--on-lift);border-radius:999px;padding:.24rem .55rem;font-weight:700}
   .label{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px}
   .split-pick{display:flex;flex-wrap:wrap;gap:8px}
+  .pick-group{margin-bottom:12px}
+  .pick-group:last-child{margin-bottom:0}
+  .pick-cat{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px}
   .split-btn{font-family:"Archivo",sans-serif;font-weight:700;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:999px;padding:.5rem .95rem;cursor:pointer;transition:.15s}
   .split-btn:hover{border-color:var(--lift);color:var(--ink)}
   .split-btn.active{background:var(--lift);border-color:var(--lift);color:var(--on-lift);box-shadow:0 6px 18px -8px rgba(255,106,66,.7)}
@@ -625,7 +628,7 @@
     </details>
 
     <details class="acc">
-      <summary>The four sessions <span class="chev">▾</span></summary>
+      <summary>Session library <span class="chev">▾</span></summary>
       <div class="acc-body" id="refSessions"></div>
     </details>
 
@@ -752,9 +755,49 @@ service cloud.firestore {
         {n:'Dumbbell lateral raises', t:'3 × 15', c:'Light, full range, no swinging.'},
         {n:'EZ bar curl', t:'3 × 10–12', c:'Controlled, squeeze the top, slow eccentric.'},
         {n:'Dumbbell hammer curl', t:'3 × 10–12', c:'Neutral grip, hits the brachialis.'}
+      ]},
+
+    'adidas-upper': { name:'Adidas Strength · Upper', day:'Class', focus:'Upper-body strength class', time:'~45 min',
+      tip:'Log the main moves from the class — add, rename or remove exercises to match what you actually did.',
+      ex:[
+        {n:'Chest press', t:'3 × 10–12', c:'Barbell or dumbbell, controlled tempo.'},
+        {n:'Shoulder press', t:'3 × 10–12', c:'Brace the core, press overhead.'},
+        {n:'Bent-over row', t:'3 × 10–12', c:'Flat back, pull to the ribs.'},
+        {n:'Lateral raise', t:'3 × 12–15', c:'Light, controlled.'},
+        {n:'Biceps curl', t:'3 × 12', c:'No swinging.'},
+        {n:'Triceps extension', t:'3 × 12', c:'Full lockout.'}
+      ]},
+    'adidas-lower': { name:'Adidas Strength · Lower', day:'Class', focus:'Lower-body strength class', time:'~45 min',
+      tip:'Log the main lifts — edit the list to match the class.',
+      ex:[
+        {n:'Back squat', t:'3 × 10–12', c:'Depth and control.'},
+        {n:'Romanian deadlift', t:'3 × 10–12', c:'Hinge, feel the hamstrings.'},
+        {n:'Walking lunge', t:'3 × 12 ea', c:'Upright torso.'},
+        {n:'Hip thrust', t:'3 × 12–15', c:'Squeeze glutes at the top.'},
+        {n:'Calf raise', t:'3 × 15–20', c:'Full range.'}
+      ]},
+    'adidas-full': { name:'Adidas Strength · Full body', day:'Class', focus:'Full-body strength class', time:'~45 min',
+      tip:'A mix of push, pull, legs and core — edit to match the class.',
+      ex:[
+        {n:'Squat', t:'3 × 10–12', c:'Legs.'},
+        {n:'Chest press', t:'3 × 10–12', c:'Push.'},
+        {n:'Row', t:'3 × 10–12', c:'Pull.'},
+        {n:'Deadlift', t:'3 × 10', c:'Hinge.'},
+        {n:'Shoulder press', t:'3 × 10–12', c:'Overhead.'},
+        {n:'Core circuit', t:'3 × 40s', u:'time', c:'Plank / mountain climbers.'}
+      ]},
+    'boxing': { name:'Boxing', day:'Class', focus:'Boxing · conditioning', time:'~60 min',
+      tip:'Log rounds by time. Use “time” entries for rounds; add custom entries for anything else.',
+      ex:[
+        {n:'Warm-up & skipping', t:'3 × 3 min', u:'time', c:'Rope + shadow boxing.'},
+        {n:'Bag work', t:'5 × 3 min', u:'time', c:'Combos, keep the guard up.'},
+        {n:'Pad / technique', t:'4 × 3 min', u:'time', c:'Sharp technique over power.'},
+        {n:'Conditioning', t:'3 × 2 min', u:'time', c:'Core / circuits to finish.'}
       ]}
   };
   const GYM_DOWS = [2,3,5,6]; // Tue, Wed, Fri, Sat
+  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing'];
+  function splitCat(k){ if(String(k).startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; return 'Gym split'; }
 
   // ---- state ----
   let LOGS = [];                 // [{id,date,split,splitName,exercises:[{n,sets:[{w,r}]}]}]
@@ -1004,10 +1047,16 @@ service cloud.firestore {
     panel.innerHTML =
       '<div class="dp-head"><div class="dp-date">'+esc(fmtFull(selectedDate))+'</div>'+
       (entry?'<span class="chip-ok">✓ '+esc(splitDisplay(entry))+' logged</span>':'')+'</div>'+
-      '<div class="label">Which split?</div>'+
-      '<div class="split-pick" id="splitPick">'+
-        Object.keys(SPLITS).map(k=>'<button type="button" class="split-btn'+(entry&&entry.split===k?' active':'')+'" data-k="'+k+'">'+SPLITS[k].name+'</button>').join('')+
-      '</div><div id="logForm">'+(entry?'':'<div class="hint">Pick the split you trained to start logging.</div>')+'</div>';
+      '<div class="label">What did you train?</div>'+
+      '<div id="splitPick">'+
+        CAT_ORDER.map(cat=>{
+          const keys=Object.keys(SPLITS).filter(k=>splitCat(k)===cat);
+          if(!keys.length) return '';
+          return '<div class="pick-group"><div class="pick-cat">'+esc(cat)+'</div><div class="split-pick">'+
+            keys.map(k=>'<button type="button" class="split-btn'+(entry&&entry.split===k?' active':'')+'" data-k="'+k+'">'+esc(SPLITS[k].name)+'</button>').join('')+
+          '</div></div>';
+        }).join('')+
+      '</div><div id="logForm">'+(entry?'':'<div class="hint">Pick what you trained to start logging.</div>')+'</div>';
 
     panel.querySelectorAll('#splitPick .split-btn').forEach(b=>b.addEventListener('click',()=>{
       panel.querySelectorAll('#splitPick .split-btn').forEach(x=>x.classList.remove('active'));
