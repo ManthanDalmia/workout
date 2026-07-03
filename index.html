@@ -197,6 +197,17 @@
   .pick-group{margin-bottom:12px}
   .pick-group:last-child{margin-bottom:0}
   .pick-cat{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px}
+  .dp-sessions{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
+  .dp-sess{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:var(--glass-2);border-radius:11px;padding:.6rem .8rem}
+  .dp-sess-main{min-width:0}
+  .dp-sess-name{font-family:"Archivo",sans-serif;font-weight:800;font-size:.92rem;color:var(--ink)}
+  .dp-sess-sum{font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dp-sess-act{display:flex;gap:6px;flex-shrink:0}
+  .mini{font-family:"JetBrains Mono",monospace;font-size:.64rem;border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:8px;padding:.36rem .6rem;cursor:pointer;transition:transform .08s ease,border-color .15s,color .15s}
+  .mini:hover{border-color:var(--aero);color:var(--aero-text)}
+  .mini:active{transform:scale(.95)}
+  .mini.del:hover{border-color:var(--lift-line);color:var(--lift-text)}
+  .cal-cell .cnt{position:absolute;top:3px;right:4px;font-family:"JetBrains Mono",monospace;font-size:.5rem;font-weight:700;color:var(--on-lift);opacity:.85}
   .note-form{margin-top:18px}
   .note-input{width:100%;font-family:"Inter",sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);background:var(--glass-2);border:1px solid var(--line);border-radius:11px;padding:.75rem .85rem;resize:vertical;min-height:104px}
   .note-input::placeholder{color:var(--ink-faint)}
@@ -799,6 +810,7 @@ service cloud.firestore {
   let fb = null;                 // firebase api refs when cloud is active
   let user = null;               // signed-in user (cloud mode)
   let unsub = null;              // firestore listener unsubscribe
+  let editingId = null;          // id of the session open in the form (null = adding new)
 
   // ---- helpers ----
   function pad(n){ return String(n).padStart(2,'0'); }
@@ -807,7 +819,9 @@ service cloud.firestore {
   function fmtFull(s){ const d=new Date(s+'T00:00:00'); return isNaN(d)?s:d.toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'}); }
   function defaultSets(t){ const m=String(t).match(/^\s*(\d+)/); return m?Math.min(parseInt(m[1],10),8):3; }
   function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
-  function entryFor(date){ return LOGS.find(e=>e.date===date); }
+  function entryFor(date){ return LOGS.find(e=>e.date===date); }       // any entry that day (existence)
+  function entriesFor(date){ return LOGS.filter(e=>e.date===date); }    // all sessions that day
+  function newId(date){ return date+'__'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
   function isNum(x){ return x!=='' && x!=null && !isNaN(parseFloat(x)); }
   function fmtTime(t){ t=String(t==null?'':t).trim(); if(!t) return '–'; return /^\d+$/.test(t)?t+'s':t; }
   function isTimeSet(s){ return s && s.t!=null && s.t!==''; }
@@ -827,6 +841,7 @@ service cloud.firestore {
     opts=opts||{}; let best=0;
     LOGS.forEach(e=>{
       if(opts.excludeDate && e.date===opts.excludeDate) return;
+      if(opts.excludeId && e.id===opts.excludeId) return;
       if(opts.beforeDate && !(e.date<opts.beforeDate)) return;
       (e.exercises||[]).forEach(x=>{ if(x.n!==name) return;
         (x.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)){ const v=epley(s.w,s.r); if(v>best) best=v; } }); });
@@ -1016,43 +1031,77 @@ service cloud.firestore {
     for(let i=0;i<startIdx;i++){ const c=document.createElement('div'); c.className='cal-cell empty'; grid.appendChild(c); }
     for(let d=1;d<=days;d++){
       const ds=viewY+'-'+pad(viewM+1)+'-'+pad(d);
-      const logged=!!entryFor(ds);
+      const count=entriesFor(ds).length;
+      const logged=count>0;
       const isToday=ds===todayIso();
       const isSel=ds===selectedDate;
       const isGym=GYM_DOWS.includes(new Date(viewY,viewM,d).getDay());
       const c=document.createElement('button'); c.type='button';
       c.className='cal-cell'+(logged?' logged':'')+(isToday?' today':'')+(isSel?' selected':'');
-      c.innerHTML = d + (isGym&&!logged?'<span class="gd"></span>':'');
+      c.innerHTML = d + (isGym&&!logged?'<span class="gd"></span>':'') + (count>1?'<span class="cnt">'+count+'</span>':'');
       c.addEventListener('click',()=>{ selectedDate=ds; renderCalendar(); renderDayPanel(); document.getElementById('dayPanel').scrollIntoView({behavior:'smooth',block:'nearest'}); });
       grid.appendChild(c);
     }
   }
 
+  // summary line for a logged session (type-aware)
+  function sessSummary(entry){
+    const sp=SPLITS[entry.split]||{};
+    if(sp.run || entry.km!=null || entry.dur!=null){
+      const bits=[entry.km?entry.km+' km':'', entry.dur||'', (entry.km&&entry.dur)?fmtPace(entry.km,entry.dur):''].filter(Boolean);
+      return bits.join(' · ')||'run';
+    }
+    if((sp.note || (entry.note!=null && !entry.exercises))){
+      const n=(entry.note||'').trim(); return n ? (n.length>64?n.slice(0,64)+'…':n) : 'note';
+    }
+    const exs=entry.exercises||[]; const vol=sessionVolume(entry);
+    return exs.length+' exercise'+(exs.length===1?'':'s')+(vol>0?' · '+(vol>=1000?(vol/1000).toFixed(1)+'k':Math.round(vol))+' kg':'');
+  }
+
   // ---- day panel ----
   function renderDayPanel(){
     const panel=document.getElementById('dayPanel');
-    const entry=entryFor(selectedDate);
-    panel.innerHTML =
-      '<div class="dp-head"><div class="dp-date">'+esc(fmtFull(selectedDate))+'</div>'+
-      (entry?'<span class="chip-ok">✓ '+esc(splitDisplay(entry))+' logged</span>':'')+'</div>'+
-      '<div class="label">What did you train?</div>'+
+    editingId=null;
+    const list=entriesFor(selectedDate);
+    let h='<div class="dp-head"><div class="dp-date">'+esc(fmtFull(selectedDate))+'</div>'+
+      (list.length?'<span class="chip-ok">✓ '+list.length+' logged</span>':'')+'</div>';
+    if(list.length){
+      h+='<div class="dp-sessions">'+ list.map(e=>
+        '<div class="dp-sess"><div class="dp-sess-main"><div class="dp-sess-name">'+esc(splitDisplay(e))+'</div>'+
+          '<div class="dp-sess-sum">'+esc(sessSummary(e))+'</div></div>'+
+          '<div class="dp-sess-act"><button type="button" class="mini" data-edit="'+esc(e.id)+'">Edit</button>'+
+          '<button type="button" class="mini del" data-del="'+esc(e.id)+'">Delete</button></div></div>'
+      ).join('')+'</div>';
+    }
+    h+='<div class="label" style="margin-top:14px">'+(list.length?'Log another session':'What did you train?')+'</div>'+
       '<div id="splitPick">'+
         CAT_ORDER.map(cat=>{
           const keys=Object.keys(SPLITS).filter(k=>splitCat(k)===cat);
           if(!keys.length) return '';
           return '<div class="pick-group"><div class="pick-cat">'+esc(cat)+'</div><div class="split-pick">'+
-            keys.map(k=>'<button type="button" class="split-btn'+(entry&&entry.split===k?' active':'')+'" data-k="'+k+'">'+esc(SPLITS[k].name)+'</button>').join('')+
+            keys.map(k=>'<button type="button" class="split-btn" data-k="'+k+'">'+esc(SPLITS[k].name)+'</button>').join('')+
           '</div></div>';
         }).join('')+
-      '</div><div id="logForm">'+(entry?'':'<div class="hint">Pick what you trained to start logging.</div>')+'</div>';
+      '</div><div id="logForm">'+(list.length?'':'<div class="hint">Pick what you trained to start logging.</div>')+'</div>';
+    panel.innerHTML=h;
 
+    const clearActive=()=>panel.querySelectorAll('#splitPick .split-btn').forEach(x=>x.classList.remove('active'));
     panel.querySelectorAll('#splitPick .split-btn').forEach(b=>b.addEventListener('click',()=>{
-      panel.querySelectorAll('#splitPick .split-btn').forEach(x=>x.classList.remove('active'));
-      b.classList.add('active');
-      const e2=entryFor(selectedDate);
-      buildForm(b.dataset.k, e2&&e2.split===b.dataset.k?e2:null);
+      editingId=null; clearActive(); b.classList.add('active');
+      buildForm(b.dataset.k, null);
+      document.getElementById('logForm').scrollIntoView({behavior:'smooth',block:'nearest'});
     }));
-    if(entry) buildForm(entry.split, entry);
+    panel.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
+      const e=LOGS.find(x=>x.id===b.dataset.edit); if(!e) return;
+      editingId=e.id; clearActive();
+      buildForm(e.split, e);
+      document.getElementById('logForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+    }));
+    panel.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{
+      const e=LOGS.find(x=>x.id===b.dataset.del);
+      removeEntry(b.dataset.del);
+      showToast('Session deleted', (e?splitDisplay(e)+' · ':'')+fmtShort(selectedDate), true);
+    }));
   }
 
   function buildNoteForm(key, entry){
@@ -1070,7 +1119,7 @@ service cloud.firestore {
     const form=document.getElementById('logForm'); form.innerHTML=h;
     const use=form.querySelector('.usenote'); if(use) use.onclick=()=>{ document.getElementById('noteInput').value = last.note; };
     document.getElementById('saveBtn').addEventListener('click',()=>saveNote(key));
-    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(editingId); showToast("Session deleted", fmtShort(selectedDate), true); });
     requestWake();
   }
 
@@ -1103,7 +1152,7 @@ service cloud.firestore {
     const upd=()=>{ document.getElementById('runPace').textContent='Pace '+fmtPace(document.getElementById('runKm').value, document.getElementById('runDur').value); };
     ['runKm','runDur'].forEach(id=>document.getElementById(id).addEventListener('input',upd)); upd();
     document.getElementById('saveBtn').addEventListener('click',()=>saveRun(key));
-    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(editingId); showToast("Session deleted", fmtShort(selectedDate), true); });
     requestWake();
   }
 
@@ -1152,7 +1201,7 @@ service cloud.firestore {
     box.addEventListener('input', summary);
     wireRm(); summary();
     document.getElementById('saveBtn').addEventListener('click',()=>saveRun(key));
-    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(editingId); showToast("Session deleted", fmtShort(selectedDate), true); });
     requestWake();
   }
 
@@ -1160,6 +1209,7 @@ service cloud.firestore {
     const sp=SPLITS[key];
     const status=document.getElementById('logStatus');
     const note=document.getElementById('runNote').value.trim();
+    const id = editingId || newId(selectedDate); editingId = id;
     let entry, km, dur;
     if(sp.segs){
       const segs=[];
@@ -1171,11 +1221,11 @@ service cloud.firestore {
       const t=segTotals(document.getElementById('segBox'));
       km = t.km>0 ? String(Math.round(t.km*100)/100) : '';
       dur = t.sec>0 ? fmtDurFromSec(t.sec) : '';
-      entry={ id:selectedDate, date:selectedDate, split:key, splitName:sp.name, segs, km, dur, note };
+      entry={ id:id, date:selectedDate, split:key, splitName:sp.name, segs, km, dur, note };
     } else {
       km=document.getElementById('runKm').value.trim();
       dur=document.getElementById('runDur').value.trim();
-      entry={ id:selectedDate, date:selectedDate, split:key, splitName:sp.name, km, dur, note };
+      entry={ id:id, date:selectedDate, split:key, splitName:sp.name, km, dur, note };
     }
     try{
       await persist(entry);
@@ -1190,7 +1240,8 @@ service cloud.firestore {
   async function saveNote(key){
     const status=document.getElementById('logStatus');
     const note=(document.getElementById('noteInput').value||'').trim();
-    const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, note };
+    const id = editingId || newId(selectedDate); editingId = id;
+    const entry={ id:id, date:selectedDate, split:key, splitName:SPLITS[key].name, note };
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
@@ -1307,7 +1358,7 @@ service cloud.firestore {
     const pf=document.getElementById('prefillBtn');
     if(pf) pf.addEventListener('click',()=>{ form.querySelectorAll('.lex[data-last]').forEach(card=>{ try{ fillSets(card, JSON.parse(card.dataset.last)); }catch(e){} }); });
     document.getElementById('saveBtn').addEventListener('click',()=>saveSession(key));
-    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(selectedDate); showToast('Session deleted', fmtShort(selectedDate), true); });
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(editingId); showToast("Session deleted", fmtShort(selectedDate), true); });
     requestWake();
   }
 
@@ -1339,15 +1390,16 @@ service cloud.firestore {
       if(name && sets.length) exercises.push({n:name, sets});
     });
     if(!exercises.length){ status.style.color='var(--lift)'; status.textContent='Add a name and at least one set first.'; showToast('Nothing to save','Add a name and at least one set',true); return; }
+    const id = editingId || newId(selectedDate); editingId = id;
     // detect new estimated-1RM PRs (only counts as a PR if it beats an existing best)
     const prs=[];
     exercises.forEach(ex=>{
       let newE=0; (ex.sets||[]).forEach(s=>{ if(isNum(s.w)&&isNum(s.r)) newE=Math.max(newE, epley(s.w,s.r)); });
       if(newE<=0) return;
-      const prev=bestE1RM(ex.n,{excludeDate:selectedDate});
+      const prev=bestE1RM(ex.n,{excludeId:id});
       if(prev>0 && newE>prev+0.01) prs.push(ex.n);
     });
-    const entry={ id:selectedDate, date:selectedDate, split:key, splitName:SPLITS[key].name, exercises };
+    const entry={ id:id, date:selectedDate, split:key, splitName:SPLITS[key].name, exercises };
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
