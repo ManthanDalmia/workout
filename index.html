@@ -546,6 +546,7 @@
   </defs>
   <rect width="100%" height="100%" fill="url(#bdoodle)"/>
 </svg>
+<input type="checkbox" id="hapticSwitch" switch aria-hidden="true" tabindex="-1" style="position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none">
 <div class="wrap">
 
   <div class="drawer-overlay" id="drawerOverlay"></div>
@@ -1414,6 +1415,19 @@ service cloud.firestore {
     document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeThemeMenu(); });
   }
 
+  // ---- haptics (light tap on tap) ----
+  // Android: Vibration API. iOS 17.4+: toggling an off-screen <input switch> plays a light haptic.
+  function haptic(){
+    try{ if(navigator.vibrate) navigator.vibrate(8); }catch(e){}
+    try{ const el=document.getElementById('hapticSwitch'); if(el) el.click(); }catch(e){}
+  }
+  function initHaptics(){
+    document.addEventListener('click', e=>{
+      const t=e.target;
+      if(t && t.closest && t.closest('button, summary, .cal-cell, .nav-item, .theme-opt')) haptic();
+    }, true);
+  }
+
   // ---- side menu / single-view navigation ----
   const VIEWS=[
     {id:'tracker',    label:'Today',      ic:'📅', eyebrow:'Training log · 4-day split', h1:'Log <span class="b">today.</span>'},
@@ -1658,6 +1672,7 @@ service cloud.firestore {
 
   initTheme();
   initNav();
+  initHaptics();
   renderRefSessions();
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(e=>console.log('SW registration failed:', e)); });
