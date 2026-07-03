@@ -1,7 +1,7 @@
 {
-  "name": "Training Tracker",
-  "short_name": "Workout",
-  "description": "4-day split training log with per-set logging and cloud sync.",
+  "name": "GodSpeed",
+  "short_name": "GodSpeed",
+  "description": "GodSpeed — training log: lifts, runs, classes, progress and PRs, with cloud sync.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
