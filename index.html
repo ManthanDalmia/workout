@@ -791,6 +791,8 @@ service cloud.firestore {
       tip:'Logged as a quick note.' },
     'boxing': { name:'Boxing', day:'Class', focus:'Boxing · conditioning', time:'~60 min', note:true,
       tip:'Logged as a quick note — rounds, drills, how you felt.' },
+    'yoga': { name:'Yoga', day:'Class', focus:'Yoga · mobility · recovery', time:'~45 min', note:true,
+      tip:'Logged as a quick note — style, focus, how you felt.' },
 
     'run-indoor':  { name:'Indoor run · Treadmill', day:'Cardio', focus:'Treadmill running', run:true, segs:true,
       tip:'Log each speed you ran at and for how long — distance and pace are worked out for you.' },
@@ -798,8 +800,8 @@ service cloud.firestore {
       tip:'Log distance and time — your pace is worked out for you.' }
   };
   const GYM_DOWS = [2,3,5,6]; // Tue, Wed, Fri, Sat
-  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing','Running'];
-  function splitCat(k){ k=String(k); if(k.startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; if(k.startsWith('run')) return 'Running'; return 'Gym split'; }
+  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing','Yoga','Running'];
+  function splitCat(k){ k=String(k); if(k.startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; if(k==='yoga') return 'Yoga'; if(k.startsWith('run')) return 'Running'; return 'Gym split'; }
 
   // ---- state ----
   let LOGS = [];                 // [{id,date,split,splitName,exercises:[{n,sets:[{w,r}]}]}]
