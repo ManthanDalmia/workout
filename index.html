@@ -218,6 +218,12 @@
   #lightbox{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:20px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
   #lightbox.open{display:flex}
   #lightbox img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 20px 60px -20px rgba(0,0,0,.8)}
+  #lightbox .lb-cap{position:absolute;bottom:20px;left:0;right:0;text-align:center;color:#fff;font-family:"JetBrains Mono",monospace;font-size:.78rem;pointer-events:none;text-shadow:0 1px 4px rgba(0,0,0,.8)}
+  .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px}
+  .shot{margin:0;position:relative;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--glass-2);cursor:zoom-in;box-shadow:var(--shadow)}
+  .shot img{width:100%;aspect-ratio:1/1;object-fit:cover;display:block}
+  .shot figcaption{position:absolute;left:0;right:0;bottom:0;padding:16px 8px 6px;font-family:"JetBrains Mono",monospace;font-size:.6rem;color:#fff;background:linear-gradient(to top,rgba(0,0,0,.75),transparent);display:flex;align-items:center;gap:5px;line-height:1.2}
+  .shot figcaption .sd{margin-left:auto;opacity:.85;white-space:nowrap}
   .dp-sess-name{font-family:"Archivo",sans-serif;font-weight:800;font-size:.92rem;color:var(--ink)}
   .dp-sess-sum{font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dp-sess-act{display:flex;gap:6px;flex-shrink:0}
@@ -653,6 +659,11 @@
   <!-- ANALYSIS REPORT -->
   <section id="report">
     <div class="card" id="reportCard"></div>
+  </section>
+
+  <!-- GALLERY -->
+  <section id="gallery">
+    <div id="galleryCard"></div>
   </section>
 
   <!-- REFERENCE (collapsible) -->
@@ -1150,11 +1161,21 @@ service cloud.firestore {
     actions.parentNode.insertBefore(box, actions);
     wirePhoto(box);
   }
-  function openLightbox(src){
+  function openLightbox(src, cap){
     if(!src) return;
     let lb=document.getElementById('lightbox');
-    if(!lb){ lb=document.createElement('div'); lb.id='lightbox'; lb.innerHTML='<img alt="">'; document.body.appendChild(lb); lb.addEventListener('click',()=>lb.classList.remove('open')); }
-    lb.querySelector('img').src=src; lb.classList.add('open');
+    if(!lb){ lb=document.createElement('div'); lb.id='lightbox'; lb.innerHTML='<img alt=""><div class="lb-cap"></div>'; document.body.appendChild(lb); lb.addEventListener('click',()=>lb.classList.remove('open')); }
+    lb.querySelector('img').src=src; lb.querySelector('.lb-cap').textContent=cap||''; lb.classList.add('open');
+  }
+  function renderGallery(){
+    const card=document.getElementById('galleryCard'); if(!card) return;
+    const shots=LOGS.filter(e=>e.photo).slice().sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    if(!shots.length){ card.innerHTML='<div class="card"><div class="chart-empty">No photos yet — add one when you log a session.</div></div>'; return; }
+    card.innerHTML='<div class="gallery-grid">'+shots.map(e=>
+      '<figure class="shot" data-id="'+esc(e.id)+'"><img src="'+e.photo+'" alt="" loading="lazy">'+
+        '<figcaption><span class="si">'+splitIcon(e.split)+'</span> '+esc(splitDisplay(e))+'<span class="sd">'+esc(fmtShort(e.date))+'</span></figcaption></figure>'
+    ).join('')+'</div>';
+    card.querySelectorAll('.shot').forEach(f=>f.addEventListener('click',()=>{ const e=LOGS.find(x=>x.id===f.dataset.id); if(e&&e.photo) openLightbox(e.photo, splitDisplay(e)+' · '+fmtFull(e.date)); }));
   }
 
   // ---- day panel ----
@@ -1598,6 +1619,7 @@ service cloud.firestore {
     {id:'progress',   label:'Progress',   ic:'📈', eyebrow:'Progress · per exercise', h1:'Your <span class="b">progress.</span>'},
     {id:'bodyweight', label:'Bodyweight', ic:'⚖️', eyebrow:'Bodyweight · trend',      h1:'<span class="b">Bodyweight.</span>'},
     {id:'report',     label:'Report',     ic:'📊', eyebrow:'Report · analysis',       h1:'Your <span class="b">report.</span>'},
+    {id:'gallery',    label:'Gallery',    ic:'🖼️', eyebrow:'Gallery · session photos', h1:'The <span class="b">gallery.</span>'},
     {id:'reference',  label:'The Plan',   ic:'📋', eyebrow:'Reference · the plan',    h1:'The <span class="b">plan.</span>'}
   ];
   let view='tracker';
@@ -1830,7 +1852,7 @@ service cloud.firestore {
   }
   function wireRepSeg(card){ card.querySelectorAll('#repSeg button').forEach(b=>b.onclick=()=>{ reportRange=b.dataset.k; renderReport(); }); }
 
-  function renderAll(){ renderStats(); renderCalendar(); renderDayPanel(); renderProgress(); renderBodyweight(); renderReport(); }
+  function renderAll(){ renderStats(); renderCalendar(); renderDayPanel(); renderProgress(); renderBodyweight(); renderReport(); renderGallery(); }
 
   // ---- wire nav ----
   document.getElementById('prevM').addEventListener('click',()=>{ viewM--; if(viewM<0){viewM=11;viewY--;} renderCalendar(); });
