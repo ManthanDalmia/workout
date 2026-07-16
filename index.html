@@ -207,7 +207,17 @@
   .pick-cat{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px}
   .dp-sessions{display:flex;flex-direction:column;gap:8px;margin-bottom:4px}
   .dp-sess{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);background:var(--glass-2);border-radius:11px;padding:.6rem .8rem}
-  .dp-sess-main{min-width:0}
+  .dp-sess-main{min-width:0;flex:1}
+  .dp-thumb{width:44px;height:44px;border-radius:9px;object-fit:cover;border:1px solid var(--line);cursor:zoom-in;flex-shrink:0}
+  .photo-box{margin-top:14px}
+  .photo-add{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--line);background:var(--glass-2);color:var(--ink-soft);border-radius:10px;padding:.55rem .9rem;font-family:"Archivo",sans-serif;font-weight:700;font-size:.8rem;cursor:pointer;transition:border-color .15s,color .15s}
+  .photo-add:hover{border-color:var(--aero);color:var(--aero-text)}
+  .photo-prev{position:relative;display:inline-block;margin-bottom:8px}
+  .photo-prev img{max-width:100%;max-height:220px;border-radius:12px;border:1px solid var(--line);display:block;cursor:zoom-in}
+  .photo-rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(0,0,0,.55);color:#fff;font-size:.85rem;cursor:pointer;line-height:1}
+  #lightbox{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;padding:20px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  #lightbox.open{display:flex}
+  #lightbox img{max-width:100%;max-height:100%;border-radius:12px;box-shadow:0 20px 60px -20px rgba(0,0,0,.8)}
   .dp-sess-name{font-family:"Archivo",sans-serif;font-weight:800;font-size:.92rem;color:var(--ink)}
   .dp-sess-sum{font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--ink-soft);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .dp-sess-act{display:flex;gap:6px;flex-shrink:0}
@@ -838,6 +848,7 @@ service cloud.firestore {
   let user = null;               // signed-in user (cloud mode)
   let unsub = null;              // firestore listener unsubscribe
   let editingId = null;          // id of the session open in the form (null = adding new)
+  let formPhoto = '';            // data-URL of the photo attached in the open form ('' = none)
 
   // ---- helpers ----
   function pad(n){ return String(n).padStart(2,'0'); }
@@ -1099,6 +1110,53 @@ service cloud.firestore {
     return exs.length+' exercise'+(exs.length===1?'':'s')+(vol>0?' · '+(vol>=1000?(vol/1000).toFixed(1)+'k':Math.round(vol))+' kg':'');
   }
 
+  // ---- session photo (compressed data-URL stored in the doc) ----
+  function encodeUnder(cv, limit){
+    for(const q of [0.72,0.6,0.5,0.42,0.35]){ const d=cv.toDataURL('image/jpeg',q); if(d.length<=limit) return d; }
+    return cv.toDataURL('image/jpeg',0.32);
+  }
+  function compressImage(file, cb){
+    const url=URL.createObjectURL(file); const img=new Image();
+    img.onload=()=>{ URL.revokeObjectURL(url);
+      let w=img.width, h=img.height; const max=1200; const s=Math.min(1, max/Math.max(w,h));
+      w=Math.max(1,Math.round(w*s)); h=Math.max(1,Math.round(h*s));
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      cb(encodeUnder(cv, 900000));
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); cb(null); };
+    img.src=url;
+  }
+  function photoInner(){
+    return '<div class="label">Photo</div>'+
+      (formPhoto ? '<div class="photo-prev"><img src="'+formPhoto+'" alt="session photo"><button type="button" class="photo-rm" id="photoRm">✕</button></div>' : '')+
+      '<label class="photo-add"><input type="file" accept="image/*" id="photoIn" hidden>'+(formPhoto?'Change photo':'📷 Add photo')+'</label>';
+  }
+  function wirePhoto(box){
+    const inp=box.querySelector('#photoIn');
+    if(inp) inp.addEventListener('change',()=>{ const f=inp.files&&inp.files[0]; if(!f) return;
+      const lbl=box.querySelector('.photo-add'); if(lbl) lbl.textContent='Processing…';
+      compressImage(f, d=>{ if(d){ formPhoto=d; box.innerHTML=photoInner(); wirePhoto(box); } else { showToast('Couldn’t read that image','Try another photo',true); box.innerHTML=photoInner(); wirePhoto(box); } });
+    });
+    const rm=box.querySelector('#photoRm'); if(rm) rm.addEventListener('click',()=>{ formPhoto=''; box.innerHTML=photoInner(); wirePhoto(box); });
+    const pv=box.querySelector('.photo-prev img'); if(pv) pv.addEventListener('click',()=>openLightbox(formPhoto));
+  }
+  function openForm(key, entry){
+    formPhoto = (entry&&entry.photo) || '';
+    buildForm(key, entry);
+    const form=document.getElementById('logForm'); if(!form) return;
+    const actions=form.querySelector('.log-actions'); if(!actions) return;
+    const box=document.createElement('div'); box.className='photo-box'; box.id='photoBox'; box.innerHTML=photoInner();
+    actions.parentNode.insertBefore(box, actions);
+    wirePhoto(box);
+  }
+  function openLightbox(src){
+    if(!src) return;
+    let lb=document.getElementById('lightbox');
+    if(!lb){ lb=document.createElement('div'); lb.id='lightbox'; lb.innerHTML='<img alt="">'; document.body.appendChild(lb); lb.addEventListener('click',()=>lb.classList.remove('open')); }
+    lb.querySelector('img').src=src; lb.classList.add('open');
+  }
+
   // ---- day panel ----
   function renderDayPanel(){
     const panel=document.getElementById('dayPanel');
@@ -1108,7 +1166,9 @@ service cloud.firestore {
       (list.length?'<span class="chip-ok">✓ '+list.length+' logged</span>':'')+'</div>';
     if(list.length){
       h+='<div class="dp-sessions">'+ list.map(e=>
-        '<div class="dp-sess" style="border-left:3px solid '+splitColor(e.split)+'"><div class="dp-sess-main"><div class="dp-sess-name"><span class="si">'+splitIcon(e.split)+'</span> '+esc(splitDisplay(e))+'</div>'+
+        '<div class="dp-sess" style="border-left:3px solid '+splitColor(e.split)+'">'+
+          (e.photo?'<img class="dp-thumb" src="'+e.photo+'" alt="" data-photo="'+esc(e.id)+'">':'')+
+          '<div class="dp-sess-main"><div class="dp-sess-name"><span class="si">'+splitIcon(e.split)+'</span> '+esc(splitDisplay(e))+'</div>'+
           '<div class="dp-sess-sum">'+esc(sessSummary(e))+'</div></div>'+
           '<div class="dp-sess-act"><button type="button" class="mini" data-edit="'+esc(e.id)+'">Edit</button>'+
           '<button type="button" class="mini del" data-del="'+esc(e.id)+'">Delete</button></div></div>'
@@ -1129,14 +1189,17 @@ service cloud.firestore {
     const clearActive=()=>panel.querySelectorAll('#splitPick .split-btn').forEach(x=>x.classList.remove('active'));
     panel.querySelectorAll('#splitPick .split-btn').forEach(b=>b.addEventListener('click',()=>{
       editingId=null; clearActive(); b.classList.add('active');
-      buildForm(b.dataset.k, null);
+      openForm(b.dataset.k, null);
       document.getElementById('logForm').scrollIntoView({behavior:'smooth',block:'nearest'});
     }));
     panel.querySelectorAll('[data-edit]').forEach(b=>b.addEventListener('click',()=>{
       const e=LOGS.find(x=>x.id===b.dataset.edit); if(!e) return;
       editingId=e.id; clearActive();
-      buildForm(e.split, e);
+      openForm(e.split, e);
       document.getElementById('logForm').scrollIntoView({behavior:'smooth',block:'nearest'});
+    }));
+    panel.querySelectorAll('.dp-thumb').forEach(t=>t.addEventListener('click',()=>{
+      const e=LOGS.find(x=>x.id===t.dataset.photo); if(e&&e.photo) openLightbox(e.photo);
     }));
     panel.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{
       const e=LOGS.find(x=>x.id===b.dataset.del);
@@ -1272,6 +1335,7 @@ service cloud.firestore {
       dur=document.getElementById('runDur').value.trim();
       entry={ id:id, date:selectedDate, split:key, splitName:sp.name, km, dur, note };
     }
+    if(formPhoto) entry.photo=formPhoto;
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
@@ -1287,6 +1351,7 @@ service cloud.firestore {
     const note=(document.getElementById('noteInput').value||'').trim();
     const id = editingId || newId(selectedDate); editingId = id;
     const entry={ id:id, date:selectedDate, split:key, splitName:SPLITS[key].name, note };
+    if(formPhoto) entry.photo=formPhoto;
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
@@ -1445,6 +1510,7 @@ service cloud.firestore {
       if(prev>0 && newE>prev+0.01) prs.push(ex.n);
     });
     const entry={ id:id, date:selectedDate, split:key, splitName:SPLITS[key].name, exercises };
+    if(formPhoto) entry.photo=formPhoto;
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
