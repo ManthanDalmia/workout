@@ -793,15 +793,19 @@ service cloud.firestore {
       tip:'Logged as a quick note — rounds, drills, how you felt.' },
     'yoga': { name:'Yoga', day:'Class', focus:'Yoga · mobility · recovery', time:'~45 min', note:true,
       tip:'Logged as a quick note — style, focus, how you felt.' },
+    'badminton': { name:'Badminton', day:'Class', focus:'Badminton', note:true,
+      tip:'Logged as a quick note — who you played, how it went.' },
 
+    'cycling': { name:'Cycling', day:'Cardio', focus:'Cycling', run:true, speed:true,
+      tip:'Log distance and time — average speed is worked out for you.' },
     'run-indoor':  { name:'Indoor run · Treadmill', day:'Cardio', focus:'Treadmill running', run:true, segs:true,
       tip:'Log each speed you ran at and for how long — distance and pace are worked out for you.' },
     'run-outdoor': { name:'Outdoor run', day:'Cardio', focus:'Outdoor running', run:true,
       tip:'Log distance and time — your pace is worked out for you.' }
   };
   const GYM_DOWS = [2,3,5,6]; // Tue, Wed, Fri, Sat
-  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing','Yoga','Running'];
-  function splitCat(k){ k=String(k); if(k.startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; if(k==='yoga') return 'Yoga'; if(k.startsWith('run')) return 'Running'; return 'Gym split'; }
+  const CAT_ORDER = ['Gym split','Adidas Strength','Boxing','Yoga','Badminton','Running','Cycling'];
+  function splitCat(k){ k=String(k); if(k.startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; if(k==='yoga') return 'Yoga'; if(k==='badminton') return 'Badminton'; if(k==='cycling') return 'Cycling'; if(k.startsWith('run')) return 'Running'; return 'Gym split'; }
 
   // ---- state ----
   let LOGS = [];                 // [{id,date,split,splitName,exercises:[{n,sets:[{w,r}]}]}]
@@ -1053,8 +1057,8 @@ service cloud.firestore {
   function sessSummary(entry){
     const sp=SPLITS[entry.split]||{};
     if(sp.run || entry.km!=null || entry.dur!=null){
-      const bits=[entry.km?entry.km+' km':'', entry.dur||'', (entry.km&&entry.dur)?fmtPace(entry.km,entry.dur):''].filter(Boolean);
-      return bits.join(' · ')||'run';
+      const bits=[entry.km?entry.km+' km':'', entry.dur||'', (entry.km&&entry.dur)?paceOrSpeed(sp,entry.km,entry.dur):''].filter(Boolean);
+      return bits.join(' · ')||'session';
     }
     if((sp.note || (entry.note!=null && !entry.exercises))){
       const n=(entry.note||'').trim(); return n ? (n.length>64?n.slice(0,64)+'…':n) : 'note';
@@ -1131,21 +1135,25 @@ service cloud.firestore {
   function parseDurSec(s){ s=String(s||'').trim(); if(!s) return 0; if(s.indexOf(':')>=0){ const p=s.split(':').map(Number); if(p.some(isNaN)) return 0; return p.reduce((a,b)=>a*60+b,0); } const m=parseFloat(s); return isNaN(m)?0:m*60; }
   function fmtPace(km,durStr){ const sec=parseDurSec(durStr), k=parseFloat(km); if(!(sec>0)||!(k>0)) return '—'; const p=sec/k, mm=Math.floor(p/60), ss=Math.round(p%60); return mm+':'+String(ss).padStart(2,'0')+' /km'; }
   function fmtDurFromSec(sec){ sec=Math.round(sec); const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; return (h?h+':'+String(m).padStart(2,'0'):String(m))+':'+String(s).padStart(2,'0'); }
+  function fmtSpeed(km,durStr){ const sec=parseDurSec(durStr), k=parseFloat(km); if(!(sec>0)||!(k>0)) return '—'; return (Math.round((k/(sec/3600))*10)/10)+' km/h'; }
+  function paceOrSpeed(sp,km,dur){ return (sp&&sp.speed) ? fmtSpeed(km,dur) : fmtPace(km,dur); }
   function fmtPaceSec(sec,km){ if(!(sec>0)||!(km>0)) return '—'; const p=sec/km, mm=Math.floor(p/60), ss=Math.round(p%60); return mm+':'+String(ss).padStart(2,'0')+' /km'; }
 
   function buildRunForm(key, entry){
-    if(SPLITS[key].segs){ buildIntervalForm(key, entry); return; }
+    const sp=SPLITS[key];
+    if(sp.segs){ buildIntervalForm(key, entry); return; }
+    const metricLbl = sp.speed ? 'Avg speed' : 'Pace';
     const last=lastSessionBefore(key, selectedDate);
     const km = entry&&entry.km!=null ? entry.km : '';
     const dur = entry&&entry.dur!=null ? entry.dur : '';
     const note = entry&&entry.note ? entry.note : '';
-    const lastLine = (last && (last.km||last.dur)) ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc((last.km?last.km+' km':''))+(last.dur?' · '+esc(last.dur):'')+'</b> '+(fmtPace(last.km,last.dur)!=='—'?'· '+fmtPace(last.km,last.dur):'')+'</div>' : '';
+    const lastLine = (last && (last.km||last.dur)) ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc((last.km?last.km+' km':''))+(last.dur?' · '+esc(last.dur):'')+'</b> '+(paceOrSpeed(sp,last.km,last.dur)!=='—'?'· '+paceOrSpeed(sp,last.km,last.dur):'')+'</div>' : '';
     const h='<div class="run-form">'+ lastLine+
         '<div class="run-row">'+
           '<div class="run-fld"><div class="label">Distance (km)</div><input id="runKm" type="number" inputmode="decimal" step="0.01" placeholder="e.g. 5.0" value="'+esc(km)+'"></div>'+
           '<div class="run-fld"><div class="label">Duration</div><input id="runDur" type="text" inputmode="numeric" placeholder="min or mm:ss" value="'+esc(dur)+'"></div>'+
         '</div>'+
-        '<div class="run-pace" id="runPace">Pace —</div>'+
+        '<div class="run-pace" id="runPace">'+metricLbl+' —</div>'+
         '<div class="label" style="margin-top:12px">Note</div>'+
         '<textarea id="runNote" class="note-input" rows="3" placeholder="Route, effort, how you felt…">'+esc(note)+'</textarea>'+
         '<div class="log-actions">'+
@@ -1154,7 +1162,7 @@ service cloud.firestore {
           '<span class="log-status" id="logStatus"></span></div>'+
       '</div>';
     const form=document.getElementById('logForm'); form.innerHTML=h;
-    const upd=()=>{ document.getElementById('runPace').textContent='Pace '+fmtPace(document.getElementById('runKm').value, document.getElementById('runDur').value); };
+    const upd=()=>{ document.getElementById('runPace').textContent=metricLbl+' '+paceOrSpeed(sp, document.getElementById('runKm').value, document.getElementById('runDur').value); };
     ['runKm','runDur'].forEach(id=>document.getElementById(id).addEventListener('input',upd)); upd();
     document.getElementById('saveBtn').addEventListener('click',()=>saveRun(key));
     const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(editingId); showToast("Session deleted", fmtShort(selectedDate), true); });
@@ -1235,9 +1243,9 @@ service cloud.firestore {
     try{
       await persist(entry);
       status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
-      const pace=fmtPace(km,dur);
-      const bits=[km?km+' km':'', dur?dur:'', pace!=='—'?pace:''].filter(Boolean).join(' · ');
-      showToast('Run saved', bits||sp.name+' · marked done');
+      const metric=paceOrSpeed(sp,km,dur);
+      const bits=[km?km+' km':'', dur?dur:'', metric!=='—'?metric:''].filter(Boolean).join(' · ');
+      showToast(sp.name+' saved', bits||sp.name+' · marked done');
       releaseWake();
     }catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
   }
