@@ -1,6 +1,6 @@
 /* Training Tracker service worker — offline app shell.
    Bump CACHE when you change index.html so clients refresh. */
-const CACHE = 'workout-v19';
+const CACHE = 'workout-v20';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-180.v2.png', './icon-512.v2.png'];
 
 self.addEventListener('install', (e) => {

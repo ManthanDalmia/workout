@@ -177,11 +177,17 @@
   .cal-cell{position:relative;aspect-ratio:1/1;border:1px solid var(--line-soft);border-radius:10px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:.84rem;color:var(--ink);cursor:pointer;transition:.12s;padding:0}
   .cal-cell.empty{border:none;background:transparent;cursor:default}
   .cal-cell:hover:not(.empty):not(.logged){border-color:var(--lift);color:var(--lift-text)}
-  .cal-cell.logged{background:linear-gradient(160deg,var(--lift-text),var(--lift));border-color:transparent;color:var(--on-lift);font-weight:700;box-shadow:0 0 0 1px var(--lift-line),0 8px 20px -8px rgba(255,106,66,.6)}
+  .cal-cell.logged{border-color:transparent;font-weight:700;color:var(--ink)}
+  .cal-cell.heat1{background:color-mix(in srgb, var(--lift) 26%, var(--surface))}
+  .cal-cell.heat2{background:color-mix(in srgb, var(--lift) 55%, var(--surface))}
+  .cal-cell.heat3{background:linear-gradient(160deg,var(--lift-text),var(--lift));color:var(--on-lift);box-shadow:0 0 0 1px var(--lift-line),0 8px 20px -8px rgba(0,0,0,.35)}
   .cal-cell.today{box-shadow:0 0 0 2px var(--aero),0 0 18px -4px rgba(51,214,199,.55)}
-  .cal-cell.logged.today{box-shadow:0 0 0 2px var(--aero),0 8px 20px -8px rgba(255,106,66,.6)}
+  .cal-cell.logged.today{box-shadow:0 0 0 2px var(--aero)}
   .cal-cell.selected{outline:2px solid var(--ink);outline-offset:1px}
   .cal-cell .gd{position:absolute;bottom:5px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:var(--lift)}
+  .cal-cell .dots{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);display:flex;gap:2.5px}
+  .cal-cell .dots i{width:5px;height:5px;border-radius:50%;box-shadow:0 0 0 1px rgba(0,0,0,.18)}
+  .cal-cell .cnt{position:absolute;top:3px;right:4px;font-family:"JetBrains Mono",monospace;font-size:.5rem;font-weight:700;opacity:.7}
   .legend{display:flex;gap:1.1rem;flex-wrap:wrap;margin-top:14px;font-size:.76rem;color:var(--ink-soft)}
   .legend span{display:inline-flex;align-items:center;gap:.4rem}
   .lg{width:13px;height:13px;border-radius:4px;display:inline-block}
@@ -209,7 +215,12 @@
   .mini:hover{border-color:var(--aero);color:var(--aero-text)}
   .mini:active{transform:scale(.95)}
   .mini.del:hover{border-color:var(--lift-line);color:var(--lift-text)}
-  .cal-cell .cnt{position:absolute;top:3px;right:4px;font-family:"JetBrains Mono",monospace;font-size:.5rem;font-weight:700;color:var(--on-lift);opacity:.85}
+  .si{font-size:.95em;line-height:1}
+  .split-btn .si{margin-right:1px}
+  /* view-switch entrance + heat cell entrance */
+  @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  section.vin{animation:viewIn .3s cubic-bezier(.2,.8,.2,1) both}
+  @media (prefers-reduced-motion:reduce){ section.vin{animation:none} }
   .note-form{margin-top:18px}
   .note-input{width:100%;font-family:"Inter",sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);background:var(--glass-2);border:1px solid var(--line);border-radius:11px;padding:.75rem .85rem;resize:vertical;min-height:104px}
   .note-input::placeholder{color:var(--ink-faint)}
@@ -806,6 +817,13 @@ service cloud.firestore {
   const GYM_DOWS = [2,3,5,6]; // Tue, Wed, Fri, Sat
   const CAT_ORDER = ['Gym split','Adidas Strength','Boxing','Yoga','Badminton','Running','Cycling'];
   function splitCat(k){ k=String(k); if(k.startsWith('adidas')) return 'Adidas Strength'; if(k==='boxing') return 'Boxing'; if(k==='yoga') return 'Yoga'; if(k==='badminton') return 'Badminton'; if(k==='cycling') return 'Cycling'; if(k.startsWith('run')) return 'Running'; return 'Gym split'; }
+  const CAT_COLOR={'Gym split':'#FF6A42','Adidas Strength':'#9B8CFF','Boxing':'#FF5470','Yoga':'#35C08A','Badminton':'#F5B400','Running':'#33C6D6','Cycling':'#4C8DFF'};
+  const CAT_ICON ={'Gym split':'🏋️','Adidas Strength':'💪','Boxing':'🥊','Yoga':'🧘','Badminton':'🏸','Running':'🏃','Cycling':'🚴'};
+  function splitColor(k){ return CAT_COLOR[splitCat(k)]||'#FF6A42'; }
+  function splitIcon(k){ return CAT_ICON[splitCat(k)]||'🏋️'; }
+  function dayScore(date){ let s=0; entriesFor(date).forEach(e=>{ const sp=SPLITS[e.split]||{}; if(sp.run){ const km=parseFloat(e.km)||0; s+= km>=8?3:km>=4?2:1; } else if(sp.note){ s+=1; } else { const ex=(e.exercises||[]).length; s+= ex>=5?3:ex>=3?2:1; } }); return s; }
+  function dayHeat(date){ const s=dayScore(date); return s>=6?3:s>=3?2:1; }
+  function dayCats(date){ const seen=[]; entriesFor(date).forEach(e=>{ const c=splitCat(e.split); if(seen.indexOf(c)<0) seen.push(c); }); return seen; }
 
   // ---- state ----
   let LOGS = [];                 // [{id,date,split,splitName,exercises:[{n,sets:[{w,r}]}]}]
@@ -906,11 +924,23 @@ service cloud.firestore {
   }
   // progress ring (0..1)
   function ringSVG(frac, center){
-    const r=18, c=2*Math.PI*r, off=c*(1-Math.max(0,Math.min(1,frac)));
+    const r=18, c=2*Math.PI*r; frac=Math.max(0,Math.min(1,frac));
+    const fill=(c*frac).toFixed(1), gap=(c*(1-frac)).toFixed(1);
     return '<svg class="ring" viewBox="0 0 44 44">'+
       '<circle class="bg" cx="22" cy="22" r="'+r+'"/>'+
-      '<circle class="fg" cx="22" cy="22" r="'+r+'" stroke-dasharray="'+(c-off).toFixed(1)+' '+off.toFixed(1)+'"/>'+
+      '<circle class="fg" cx="22" cy="22" r="'+r+'" stroke-dasharray="0 '+c.toFixed(1)+'" data-da="'+fill+' '+gap+'"/>'+
       '<text class="ring-c" x="22" y="22" text-anchor="middle" dominant-baseline="central">'+center+'</text></svg>';
+  }
+  let statsAnimated=false;
+  function animateCount(el){ const to=parseFloat(el.dataset.to)||0, dur=650; let start=null;
+    function step(ts){ if(start==null) start=ts; const p=Math.min(1,(ts-start)/dur); el.textContent=Math.round(to*p); if(p<1) requestAnimationFrame(step); else el.textContent=to; }
+    requestAnimationFrame(step);
+  }
+  function playStatMotion(el){
+    requestAnimationFrame(()=>{ const fg=el.querySelector('.ring .fg'); if(fg&&fg.dataset.da) fg.setAttribute('stroke-dasharray', fg.dataset.da); });
+    const cups=el.querySelectorAll('.cup');
+    if(!statsAnimated){ statsAnimated=true; cups.forEach(animateCount); }
+    else cups.forEach(s=>s.textContent=s.dataset.to);
   }
 
   // ---- wake lock (keep screen on mid-workout) ----
@@ -1046,8 +1076,10 @@ service cloud.firestore {
       const isSel=ds===selectedDate;
       const isGym=GYM_DOWS.includes(new Date(viewY,viewM,d).getDay());
       const c=document.createElement('button'); c.type='button';
-      c.className='cal-cell'+(logged?' logged':'')+(isToday?' today':'')+(isSel?' selected':'');
-      c.innerHTML = d + (isGym&&!logged?'<span class="gd"></span>':'') + (count>1?'<span class="cnt">'+count+'</span>':'');
+      c.className='cal-cell'+(logged?' logged heat'+dayHeat(ds):'')+(isToday?' today':'')+(isSel?' selected':'');
+      let dots='';
+      if(logged){ const cats=dayCats(ds).slice(0,3); dots='<span class="dots">'+cats.map(ct=>'<i style="background:'+CAT_COLOR[ct]+'"></i>').join('')+'</span>'; }
+      c.innerHTML = d + (isGym&&!logged?'<span class="gd"></span>':'') + dots + (count>1?'<span class="cnt">'+count+'</span>':'');
       c.addEventListener('click',()=>{ selectedDate=ds; renderCalendar(); renderDayPanel(); document.getElementById('dayPanel').scrollIntoView({behavior:'smooth',block:'nearest'}); });
       grid.appendChild(c);
     }
@@ -1076,7 +1108,7 @@ service cloud.firestore {
       (list.length?'<span class="chip-ok">✓ '+list.length+' logged</span>':'')+'</div>';
     if(list.length){
       h+='<div class="dp-sessions">'+ list.map(e=>
-        '<div class="dp-sess"><div class="dp-sess-main"><div class="dp-sess-name">'+esc(splitDisplay(e))+'</div>'+
+        '<div class="dp-sess" style="border-left:3px solid '+splitColor(e.split)+'"><div class="dp-sess-main"><div class="dp-sess-name"><span class="si">'+splitIcon(e.split)+'</span> '+esc(splitDisplay(e))+'</div>'+
           '<div class="dp-sess-sum">'+esc(sessSummary(e))+'</div></div>'+
           '<div class="dp-sess-act"><button type="button" class="mini" data-edit="'+esc(e.id)+'">Edit</button>'+
           '<button type="button" class="mini del" data-del="'+esc(e.id)+'">Delete</button></div></div>'
@@ -1088,7 +1120,7 @@ service cloud.firestore {
           const keys=Object.keys(SPLITS).filter(k=>splitCat(k)===cat);
           if(!keys.length) return '';
           return '<div class="pick-group"><div class="pick-cat">'+esc(cat)+'</div><div class="split-pick">'+
-            keys.map(k=>'<button type="button" class="split-btn" data-k="'+k+'">'+esc(SPLITS[k].name)+'</button>').join('')+
+            keys.map(k=>'<button type="button" class="split-btn" data-k="'+k+'"><span class="si">'+splitIcon(k)+'</span> '+esc(SPLITS[k].name)+'</button>').join('')+
           '</div></div>';
         }).join('')+
       '</div><div id="logForm">'+(list.length?'':'<div class="hint">Pick what you trained to start logging.</div>')+'</div>';
@@ -1520,6 +1552,7 @@ service cloud.firestore {
   function setView(name){
     if(VIEWS.some(v=>v.id===name)) view=name;
     applyView(); closeDrawer();
+    const s=document.getElementById(view); if(s){ s.classList.remove('vin'); void s.offsetWidth; s.classList.add('vin'); }
     try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
   }
   function openDrawer(){ const d=document.getElementById('drawer'),o=document.getElementById('drawerOverlay'),b=document.getElementById('menuBtn'); if(d)d.classList.add('open'); if(o)o.classList.add('open'); if(b)b.setAttribute('aria-expanded','true'); }
@@ -1566,9 +1599,10 @@ service cloud.firestore {
     const streak=computeStreak();
     el.innerHTML =
       '<div class="stat"><div class="ring-wrap">'+ringSVG(weekLogs.length/goal, done+'/'+goal)+'<div><div class="k" style="margin-top:0">This week</div></div></div></div>'+
-      '<div class="stat"><div class="v fire">'+(streak?'🔥 '+streak:'—')+'</div><div class="k">Session streak</div></div>'+
-      '<div class="stat"><div class="v">'+month+'</div><div class="k">This month</div></div>'+
+      '<div class="stat"><div class="v fire">'+(streak?'🔥 <span class="cup" data-to="'+streak+'">0</span>':'—')+'</div><div class="k">Session streak</div></div>'+
+      '<div class="stat"><div class="v"><span class="cup" data-to="'+month+'">0</span></div><div class="k">This month</div></div>'+
       '<div class="stat"><div class="v cy">'+volK+'</div><div class="k">Volume · wk (kg)</div></div>';
+    playStatMotion(el);
     renderBadges();
   }
 
