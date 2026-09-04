@@ -237,6 +237,24 @@
   @keyframes viewIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
   section.vin{animation:viewIn .3s cubic-bezier(.2,.8,.2,1) both}
   @media (prefers-reduced-motion:reduce){ section.vin{animation:none} }
+  .mode-toggle{margin:16px 0 4px}
+  .mus-form{margin-top:6px}
+  .body-wrap{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:8px 0 2px}
+  .fig{width:150px;max-width:44vw;height:auto;touch-action:manipulation;user-select:none}
+  .fig .sil *{fill:var(--surface-2);stroke:var(--line);stroke-width:1.4}
+  .fig .fig-lbl{fill:var(--ink-faint);font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase}
+  .mz{fill:color-mix(in srgb, var(--ink) 13%, transparent);stroke:color-mix(in srgb, var(--ink) 22%, transparent);stroke-width:1;cursor:pointer;transition:fill .12s}
+  .mz:hover{fill:color-mix(in srgb, var(--aero) 34%, transparent)}
+  .mz.on{fill:var(--lift);stroke:var(--lift)}
+  .mus-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .mus-item{display:flex;align-items:center;gap:8px;border:1px solid var(--lift-line);background:var(--lift-bg);border-radius:999px;padding:.28rem .5rem .28rem .8rem}
+  .mus-item .mn{font-weight:600;font-size:.82rem;color:var(--ink)}
+  .mus-step{display:flex;align-items:center;gap:5px}
+  .mus-step button{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:1.05rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .mus-step button:active{transform:scale(.9)}
+  .mus-step .c{font-family:"JetBrains Mono",monospace;font-size:.8rem;min-width:14px;text-align:center;color:var(--ink)}
+  .mus-x{border:none;background:none;color:var(--ink-faint);cursor:pointer;font-size:.7rem;padding:0 2px}
+  .mus-x:hover{color:var(--lift-text)}
   .note-form{margin-top:18px}
   .note-input{width:100%;font-family:"Inter",sans-serif;font-size:.92rem;line-height:1.5;color:var(--ink);background:var(--glass-2);border:1px solid var(--line);border-radius:11px;padding:.75rem .85rem;resize:vertical;min-height:104px}
   .note-input::placeholder{color:var(--ink-faint)}
@@ -842,7 +860,7 @@ service cloud.firestore {
   const CAT_ICON ={'Gym split':'🏋️','Adidas Strength':'💪','Boxing':'🥊','Yoga':'🧘','Badminton':'🏸','Running':'🏃','Cycling':'🚴'};
   function splitColor(k){ return CAT_COLOR[splitCat(k)]||'#FF6A42'; }
   function splitIcon(k){ return CAT_ICON[splitCat(k)]||'🏋️'; }
-  function dayScore(date){ let s=0; entriesFor(date).forEach(e=>{ const sp=SPLITS[e.split]||{}; if(sp.run){ const km=parseFloat(e.km)||0; s+= km>=8?3:km>=4?2:1; } else if(sp.note){ s+=1; } else { const ex=(e.exercises||[]).length; s+= ex>=5?3:ex>=3?2:1; } }); return s; }
+  function dayScore(date){ let s=0; entriesFor(date).forEach(e=>{ const sp=SPLITS[e.split]||{}; if(sp.run){ const km=parseFloat(e.km)||0; s+= km>=8?3:km>=4?2:1; } else if(e.muscles&&e.muscles.length){ const t=e.muscles.reduce((a,x)=>a+(x.n||0),0); s+= t>=5?3:t>=3?2:1; } else if(sp.note){ s+=1; } else { const ex=(e.exercises||[]).length; s+= ex>=5?3:ex>=3?2:1; } }); return s; }
   function dayHeat(date){ const s=dayScore(date); return s>=6?3:s>=3?2:1; }
   function dayCats(date){ const seen=[]; entriesFor(date).forEach(e=>{ const c=splitCat(e.split); if(seen.indexOf(c)<0) seen.push(c); }); return seen; }
 
@@ -860,6 +878,8 @@ service cloud.firestore {
   let unsub = null;              // firestore listener unsubscribe
   let editingId = null;          // id of the session open in the form (null = adding new)
   let formPhoto = '';            // data-URL of the photo attached in the open form ('' = none)
+  let formMode = 'muscle';       // strength log mode: 'muscle' (body figure) | 'detailed' (sets/reps)
+  let musSel = {};               // muscle -> exercise count, for the open muscle form
 
   // ---- helpers ----
   function pad(n){ return String(n).padStart(2,'0'); }
@@ -1114,6 +1134,10 @@ service cloud.firestore {
       const bits=[entry.km?entry.km+' km':'', entry.dur||'', (entry.km&&entry.dur)?paceOrSpeed(sp,entry.km,entry.dur):''].filter(Boolean);
       return bits.join(' · ')||'session';
     }
+    if(entry.muscles && entry.muscles.length){
+      const tot=entry.muscles.reduce((a,x)=>a+(x.n||0),0);
+      return entry.muscles.map(x=>x.m+' ×'+x.n).join(' · ')+' · '+tot+' ex';
+    }
     if((sp.note || (entry.note!=null && !entry.exercises))){
       const n=(entry.note||'').trim(); return n ? (n.length>64?n.slice(0,64)+'…':n) : 'note';
     }
@@ -1152,14 +1176,20 @@ service cloud.firestore {
     const rm=box.querySelector('#photoRm'); if(rm) rm.addEventListener('click',()=>{ formPhoto=''; box.innerHTML=photoInner(); wirePhoto(box); });
     const pv=box.querySelector('.photo-prev img'); if(pv) pv.addEventListener('click',()=>openLightbox(formPhoto));
   }
-  function openForm(key, entry){
-    formPhoto = (entry&&entry.photo) || '';
-    buildForm(key, entry);
+  function injectPhotoBox(){
     const form=document.getElementById('logForm'); if(!form) return;
+    if(form.querySelector('#photoBox')) return;
     const actions=form.querySelector('.log-actions'); if(!actions) return;
     const box=document.createElement('div'); box.className='photo-box'; box.id='photoBox'; box.innerHTML=photoInner();
     actions.parentNode.insertBefore(box, actions);
     wirePhoto(box);
+  }
+  function openForm(key, entry){
+    const sp=SPLITS[key]||{};
+    formPhoto = (entry&&entry.photo) || '';
+    if(!sp.run && !sp.note){ formMode = (entry && entry.exercises && entry.exercises.length) ? 'detailed' : 'muscle'; musSel = musInit(key, entry); }
+    buildForm(key, entry);
+    injectPhotoBox();
   }
   function openLightbox(src, cap){
     if(!src) return;
@@ -1447,10 +1477,92 @@ service cloud.firestore {
     }));
   }
 
+  // ---- muscle-group logging (tap a body figure) ----
+  const MUSCLES=['Chest','Back','Shoulders','Biceps','Triceps','Core','Legs'];
+  const SPLIT_MUSCLES={'lower-a':['Legs','Core'],'upper-a':['Chest','Back'],'lower-b':['Shoulders','Triceps','Core'],'upper-b':['Back','Biceps','Shoulders']};
+  function musInit(key, entry){ const o={}; if(entry&&entry.muscles&&entry.muscles.length){ entry.muscles.forEach(x=>o[x.m]=x.n||1); } else { (SPLIT_MUSCLES[key]||[]).forEach(m=>o[m]=1); } return o; }
+  function figSVG(view){
+    const sil='<g class="sil">'+
+      '<circle cx="60" cy="20" r="11"/>'+
+      '<rect x="43" y="38" width="34" height="60" rx="14"/>'+
+      '<rect x="20" y="42" width="13" height="50" rx="6.5"/>'+
+      '<rect x="87" y="42" width="13" height="50" rx="6.5"/>'+
+      '<rect x="45" y="96" width="13" height="80" rx="6"/>'+
+      '<rect x="62" y="96" width="13" height="80" rx="6"/></g>';
+    const E=(m,cx,cy,rx,ry)=>'<ellipse class="mz" data-m="'+m+'" cx="'+cx+'" cy="'+cy+'" rx="'+rx+'" ry="'+ry+'"/>';
+    let z;
+    if(view==='front') z=[E('Shoulders',31,50,10,7),E('Shoulders',89,50,10,7),E('Chest',49,64,11,8),E('Chest',71,64,11,8),E('Biceps',26,70,6,11),E('Biceps',94,70,6,11),E('Core',60,88,12,15),E('Legs',51,134,11,30),E('Legs',69,134,11,30)];
+    else z=[E('Shoulders',31,50,10,7),E('Shoulders',89,50,10,7),E('Back',60,66,19,20),E('Triceps',26,70,6,11),E('Triceps',94,70,6,11),E('Legs',51,134,11,30),E('Legs',69,134,11,30)];
+    return '<svg class="fig" viewBox="0 0 120 188" role="img" aria-label="'+view+' muscles">'+sil+'<g class="zones">'+z.join('')+'</g>'+
+      '<text class="fig-lbl" x="60" y="185" text-anchor="middle">'+(view==='front'?'Front':'Back')+'</text></svg>';
+  }
+  function buildMuscleForm(key, entry){
+    const sp=SPLITS[key];
+    const last=lastSessionBefore(key, selectedDate);
+    const lastLine = (last && last.muscles && last.muscles.length) ? '<div class="lex-last">last '+esc(fmtShort(last.date))+': <b>'+esc(last.muscles.map(x=>x.m+' ×'+x.n).join(' · '))+'</b> <button type="button" class="usemus">use</button></div>' : '';
+    const h=modeToggle()+
+      '<div class="mus-form">'+ lastLine +
+        '<div class="label">Tap the muscles you trained</div>'+
+        '<div class="body-wrap">'+figSVG('front')+figSVG('back')+'</div>'+
+        '<div class="mus-list" id="musList"></div>'+
+        '<div class="log-actions"><button type="button" class="btn" id="saveBtn">Save session</button>'+
+          (entry?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
+          '<span class="log-status" id="logStatus"></span></div>'+
+      '</div>';
+    const form=document.getElementById('logForm'); form.innerHTML=h;
+    wireModeToggle(key, entry);
+    function paint(){
+      form.querySelectorAll('.mz').forEach(z=>z.classList.toggle('on', musSel[z.dataset.m]!=null));
+      const listEl=document.getElementById('musList');
+      const keys=MUSCLES.filter(m=>musSel[m]!=null);
+      listEl.innerHTML = keys.length ? keys.map(m=>'<div class="mus-item"><span class="mn">'+esc(m)+'</span><span class="mus-step"><button type="button" data-dn="'+esc(m)+'">−</button><span class="c">'+musSel[m]+'</span><button type="button" data-up="'+esc(m)+'">+</button></span><button type="button" class="mus-x" data-x="'+esc(m)+'" aria-label="remove">✕</button></div>').join('') : '<div class="hint">Tap a muscle on the figure above to add it.</div>';
+      listEl.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ musSel[b.dataset.up]=Math.min(9,(musSel[b.dataset.up]||1)+1); paint(); });
+      listEl.querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ musSel[b.dataset.dn]=Math.max(1,(musSel[b.dataset.dn]||1)-1); paint(); });
+      listEl.querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{ delete musSel[b.dataset.x]; paint(); });
+    }
+    form.querySelectorAll('.mz').forEach(z=>z.addEventListener('click',()=>{ const m=z.dataset.m; if(musSel[m]!=null) delete musSel[m]; else musSel[m]=1; paint(); }));
+    const um=form.querySelector('.usemus'); if(um) um.addEventListener('click',()=>{ musSel={}; (last.muscles||[]).forEach(x=>musSel[x.m]=x.n||1); paint(); });
+    document.getElementById('saveBtn').addEventListener('click',()=>saveMuscle(key));
+    const del=document.getElementById('delBtn'); if(del) del.addEventListener('click',()=>{ removeEntry(editingId); showToast("Session deleted", fmtShort(selectedDate), true); });
+    paint();
+    requestWake();
+  }
+  async function saveMuscle(key){
+    const sp=SPLITS[key];
+    const status=document.getElementById('logStatus');
+    const muscles=MUSCLES.filter(m=>musSel[m]!=null).map(m=>({m, n:musSel[m]}));
+    if(!muscles.length){ status.style.color='var(--lift)'; status.textContent='Tap at least one muscle.'; showToast('Nothing to save','Tap a muscle on the figure',true); return; }
+    const id=editingId||newId(selectedDate); editingId=id;
+    const entry={ id, date:selectedDate, split:key, splitName:sp.name, muscles };
+    if(formPhoto) entry.photo=formPhoto;
+    try{
+      await persist(entry);
+      status.style.color='var(--aero)'; status.textContent = fb?'Synced ✓':(localOK?'Saved ✓':'Saved (this session only)');
+      const tot=muscles.reduce((a,x)=>a+x.n,0);
+      showToast('Session saved', muscles.map(x=>x.m).join(', ')+' · '+tot+' exercise'+(tot>1?'s':''));
+      releaseWake();
+    }catch(e){ console.error(e); status.style.color='var(--lift)'; status.textContent='Could not save — check your connection.'; showToast('Couldn’t save','Check your connection and try again',true); }
+  }
+
   function buildForm(key, entry){
     const sp=SPLITS[key];
     if(sp.run){ buildRunForm(key, entry); return; }
     if(sp.note){ buildNoteForm(key, entry); return; }
+    if(formMode==='detailed') buildDetailedForm(key, entry); else buildMuscleForm(key, entry);
+  }
+  function modeToggle(){
+    return '<div class="unit-toggle mode-toggle" id="modeToggle">'+
+      '<button type="button" data-m="muscle"'+(formMode==='muscle'?' class="on"':'')+'>Muscles</button>'+
+      '<button type="button" data-m="detailed"'+(formMode==='detailed'?' class="on"':'')+'>Detailed</button></div>';
+  }
+  function wireModeToggle(key, entry){
+    document.querySelectorAll('#modeToggle button').forEach(b=>b.addEventListener('click',()=>{
+      if(formMode===b.dataset.m) return; formMode=b.dataset.m; buildForm(key, entry); injectPhotoBox();
+    }));
+  }
+
+  function buildDetailedForm(key, entry){
+    const sp=SPLITS[key];
     const existing = entry ? entry.exercises : null;
     const last=lastSessionBefore(key, selectedDate);
     const lastFor=name=> last?(last.exercises||[]).find(x=>x.n===name):null;
@@ -1472,13 +1584,15 @@ service cloud.firestore {
         best: bestE1RM(sx.n,{beforeDate:selectedDate}) });
     });
 
-    let h=list.map(exCard).join('');
+    let h=modeToggle();
+    h+=list.map(exCard).join('');
     h+='<button type="button" class="addex" id="addExBtn">+ Add exercise</button>';
     h+='<div class="log-actions"><button type="button" class="btn" id="saveBtn">Save session</button>'+
        (last?'<button type="button" class="btn ghost" id="prefillBtn">Prefill from '+esc(fmtShort(last.date))+'</button>':'')+
-       (existing?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
+       (entry?'<button type="button" class="btn danger" id="delBtn">Delete</button>':'')+
        '<span class="log-status" id="logStatus"></span></div>';
     const form=document.getElementById('logForm'); form.innerHTML=h;
+    wireModeToggle(key, entry);
 
     form.querySelectorAll('.lex').forEach(wireCard);
     document.getElementById('addExBtn').addEventListener('click',function(){
@@ -1829,6 +1943,9 @@ service cloud.firestore {
     // most-trained exercises (by sessions in window)
     const cnt={}; logs.forEach(e=>{ const seen={}; (e.exercises||[]).forEach(x=>{ if(seen[x.n])return; seen[x.n]=1; cnt[x.n]=(cnt[x.n]||0)+1; }); });
     const topEx=Object.keys(cnt).map(n=>({label:n,val:cnt[n],sub:cnt[n]+'×'})).sort((a,b)=>b.val-a.val).slice(0,6);
+    // muscle balance (exercises per muscle from muscle-logged sessions)
+    const mus={}; logs.forEach(e=>(e.muscles||[]).forEach(x=>{ mus[x.m]=(mus[x.m]||0)+(x.n||0); }));
+    const musBars=Object.keys(mus).sort((a,b)=>mus[b]-mus[a]).map(m=>({label:m,val:mus[m],sub:String(mus[m])}));
 
     card.innerHTML=
       '<div class="prog-top"><div style="font-family:JetBrains Mono;font-size:.7rem;color:var(--ink-faint)">'+esc(fmtShort(startS))+' → '+esc(fmtShort(todayS))+'</div>'+seg+'</div>'+
@@ -1843,6 +1960,7 @@ service cloud.firestore {
       '</div>'+
       '<div class="rsub-h">Weekly volume</div>'+ lineChart(wk.map(round1)) +
       '<div class="chart-x"><span>'+esc(fmtShort(startS))+'</span><span>'+esc(fmtShort(todayS))+'</span></div>'+
+      (musBars.length?'<div class="rsub-h">Muscle balance</div>'+ hbars(musBars):'')+
       '<div class="rsub-h">Split balance</div>'+ hbars(splitBarsHtml) +
       '<div class="rsub-h">PRs this period</div>'+
       (prs.length? '<div class="pr-list">'+prs.slice(0,8).map(p=>'<div class="pr-item"><span class="pn">'+esc(p.n)+'</span><span class="pv">'+round1(p.e1rm)+' kg e1RM'+(p.delta!=null?' · +'+round1(p.delta):'')+'</span></div>').join('')+'</div>'
