@@ -550,7 +550,21 @@
   .nav-item:hover{background:var(--surface);color:var(--ink)}
   .nav-item.on{background:var(--lift-bg);border-color:var(--lift-line);color:var(--lift-text)}
   .nav-item .ic{font-size:1.15rem;width:1.5rem;text-align:center;flex-shrink:0}
-  .nav-foot{margin-top:auto;padding:10px 8px 2px;font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--ink-faint);border-top:1px solid var(--line-soft)}
+  .nav-foot{padding:10px 8px 2px;font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--ink-faint);border-top:1px solid var(--line-soft)}
+  .rem-toggle{margin-top:auto;padding-top:8px}
+  .rem-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:11px;padding:.6rem .8rem;cursor:pointer;font-family:"Archivo",sans-serif;font-weight:700;font-size:.86rem}
+  .rem-btn:hover{border-color:var(--aero)}
+  .rem-btn.on{border-color:var(--aero-line);background:var(--aero-bg);color:var(--aero-text)}
+  .rem-btn .rem-state{font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--ink-faint)}
+  .rem-btn.on .rem-state{color:var(--aero-text)}
+  /* train-today nudge */
+  .nudge-card{border:1px solid var(--aero-line);background:var(--aero-bg);border-radius:14px;padding:11px 13px;margin-bottom:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .nudge-h{font-family:"Archivo",sans-serif;font-weight:800;font-size:.86rem;color:var(--aero-text)}
+  .nudge-chips{display:flex;gap:8px;flex-wrap:wrap}
+  .nudge-chip{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:.34rem .8rem;cursor:pointer;font-family:"Archivo",sans-serif;font-weight:700;font-size:.82rem;transition:transform .08s ease,border-color .15s}
+  .nudge-chip:hover{border-color:var(--aero);color:var(--aero-text)}
+  .nudge-chip:active{transform:scale(.96)}
+  .nudge-chip .nd{font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--ink-faint)}
   @media (max-width:680px){
     .stats{grid-template-columns:repeat(2,1fr)}
     .ex-select{max-width:100%}
@@ -614,7 +628,8 @@
       <button type="button" class="drawer-close" id="drawerClose" aria-label="Close menu">✕</button>
     </div>
     <nav id="navList"></nav>
-    <div class="nav-foot">4-DAY SPLIT · TUE/WED/FRI/SAT</div>
+    <div id="reminderToggle" class="rem-toggle"></div>
+    <div class="nav-foot">Onwards &amp; upwards ↑</div>
   </aside>
 
   <div class="topbar">
@@ -643,6 +658,7 @@
   <!-- TRACKER (default, first) -->
   <section id="tracker">
     <div class="stats" id="stats"></div>
+    <div id="nudge"></div>
     <div class="cal">
       <div class="cal-head">
         <div class="cal-title" id="calTitle">—</div>
@@ -1767,6 +1783,54 @@ service cloud.firestore {
     const o=document.getElementById('drawerOverlay'); if(o) o.onclick=closeDrawer;
     document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDrawer(); });
     applyView();
+    renderReminderToggle();
+    scheduleReminder();
+  }
+
+  // ---- daily reminder (best-effort) ----
+  function reminderOn(){ try{ return localStorage.getItem('notify')==='1'; }catch(e){ return false; } }
+  async function fireNotify(title, body){
+    try{ if(typeof Notification==='undefined' || Notification.permission!=='granted') return;
+      const opts={ body, icon:'icon-512.v2.png', badge:'icon-180.v2.png', tag:'daily-log', renotify:true };
+      if('serviceWorker' in navigator){ const reg=await navigator.serviceWorker.ready; if(reg&&reg.showNotification){ reg.showNotification(title,opts); return; } }
+      new Notification(title, opts);
+    }catch(e){}
+  }
+  async function tryBgTrigger(t){
+    try{
+      if(!('serviceWorker' in navigator) || typeof Notification==='undefined') return;
+      if(!('showTrigger' in Notification.prototype) || typeof TimestampTrigger==='undefined') return;
+      const reg=await navigator.serviceWorker.ready;
+      const olds=await reg.getNotifications({includeTriggered:true, tag:'daily-log-bg'}); olds.forEach(n=>n.close());
+      reg.showNotification('GodSpeed 💪', { tag:'daily-log-bg', body:"Log today’s session — or a past one you missed.", icon:'icon-512.v2.png', badge:'icon-180.v2.png', showTrigger:new TimestampTrigger(t.getTime()) });
+    }catch(e){}
+  }
+  let remTimer=null;
+  function scheduleReminder(){
+    if(remTimer){ clearTimeout(remTimer); remTimer=null; }
+    if(!reminderOn() || typeof Notification==='undefined' || Notification.permission!=='granted') return;
+    const now=new Date(); const t=new Date(); t.setHours(11,0,0,0);
+    if(now>=t){ if(!entriesFor(todayIso()).length) fireNotify('GodSpeed 💪', "Log today’s session — or a past one you missed."); t.setDate(t.getDate()+1); }
+    remTimer=setTimeout(()=>{ if(!entriesFor(todayIso()).length) fireNotify('GodSpeed 💪', "Time to log today’s session."); scheduleReminder(); }, Math.max(1000, t-now));
+    tryBgTrigger(t);
+  }
+  async function toggleReminder(on){
+    if(typeof Notification==='undefined'){ showToast('Not supported','This browser can’t show notifications',true); return; }
+    if(on){
+      let perm=Notification.permission;
+      if(perm==='default'){ try{ perm=await Notification.requestPermission(); }catch(e){} }
+      if(perm!=='granted'){ showToast('Notifications blocked','Allow them in your browser / phone settings',true); try{localStorage.setItem('notify','0');}catch(e){} renderReminderToggle(); return; }
+      try{ localStorage.setItem('notify','1'); }catch(e){}
+      scheduleReminder(); showToast('Reminder on', 'You’ll be nudged at 11am to log');
+    } else { try{ localStorage.setItem('notify','0'); }catch(e){} if(remTimer){ clearTimeout(remTimer); remTimer=null; } showToast('Reminder off', ''); }
+    renderReminderToggle();
+  }
+  function renderReminderToggle(){
+    const el=document.getElementById('reminderToggle'); if(!el) return;
+    if(typeof Notification==='undefined'){ el.innerHTML=''; return; }
+    const on=reminderOn() && Notification.permission==='granted';
+    el.innerHTML='<button type="button" class="rem-btn'+(on?' on':'')+'" id="remBtn"><span>🔔 Daily reminder</span><span class="rem-state">'+(on?'11am · on':'off')+'</span></button>';
+    const b=document.getElementById('remBtn'); if(b) b.onclick=()=>toggleReminder(!reminderOn());
   }
 
   // ---- reference sessions (generated from SPLITS) ----
@@ -1823,6 +1887,27 @@ service cloud.firestore {
     if(!wrap){ wrap=document.createElement('div'); wrap.id='badges'; wrap.className='badges'; const stats=document.getElementById('stats'); stats.parentNode.insertBefore(wrap, stats.nextSibling); }
     wrap.innerHTML=items.join('');
     wrap.style.display=items.length?'flex':'none';
+  }
+
+  // muscle -> most recent date trained (from muscle logs)
+  function muscleLastMap(){ const last={}; LOGS.forEach(e=>(e.muscles||[]).forEach(x=>{ if(!last[x.m] || e.date>last[x.m]) last[x.m]=e.date; })); return last; }
+  function renderNudge(){
+    const el=document.getElementById('nudge'); if(!el) return;
+    const last=muscleLastMap();
+    if(!Object.keys(last).length){ el.innerHTML=''; return; }   // nothing logged by muscle yet
+    const today=todayIso();
+    const ranked=MUSCLES.map(m=>({m, days: last[m]!=null?daysBetween(last[m],today):null}))
+      .sort((a,b)=>{ if(a.days==null&&b.days==null) return 0; if(a.days==null) return -1; if(b.days==null) return 1; return b.days-a.days; });
+    const pick=ranked.slice(0,3);
+    el.innerHTML='<div class="nudge-card"><div class="nudge-h">Train today</div><div class="nudge-chips">'+
+      pick.map(p=>'<button type="button" class="nudge-chip" data-m="'+esc(p.m)+'"><span class="nm">'+esc(p.m)+'</span><span class="nd">'+(p.days==null?'never':p.days===0?'today':p.days+'d ago')+'</span></button>').join('')+
+      '</div></div>';
+    el.querySelectorAll('.nudge-chip').forEach(b=>b.addEventListener('click',()=>{
+      selectedDate=todayIso(); renderCalendar(); renderDayPanel();
+      editingId=null; formPhoto=''; formMode='muscle'; musSel={}; musSel[b.dataset.m]=1;
+      buildForm('gym', null); injectPhotoBox();
+      document.getElementById('dayPanel').scrollIntoView({behavior:'smooth',block:'start'});
+    }));
   }
 
   // ---- progress ----
@@ -1971,7 +2056,7 @@ service cloud.firestore {
   }
   function wireRepSeg(card){ card.querySelectorAll('#repSeg button').forEach(b=>b.onclick=()=>{ reportRange=b.dataset.k; renderReport(); }); }
 
-  function renderAll(){ renderStats(); renderCalendar(); renderDayPanel(); renderProgress(); renderBodyweight(); renderReport(); renderGallery(); }
+  function renderAll(){ renderStats(); renderNudge(); renderCalendar(); renderDayPanel(); renderProgress(); renderBodyweight(); renderReport(); renderGallery(); }
 
   // ---- wire nav ----
   document.getElementById('prevM').addEventListener('click',()=>{ viewM--; if(viewM<0){viewM=11;viewY--;} renderCalendar(); });

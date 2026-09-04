@@ -1,6 +1,6 @@
 /* Training Tracker service worker — offline app shell.
    Bump CACHE when you change index.html so clients refresh. */
-const CACHE = 'workout-v24';
+const CACHE = 'workout-v25';
 const ASSETS = ['./', './index.html', './manifest.json', './icon-180.v2.png', './icon-512.v2.png'];
 
 self.addEventListener('install', (e) => {
@@ -13,6 +13,17 @@ self.addEventListener('activate', (e) => {
     caches.keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim())
+  );
+});
+
+// tapping the daily reminder opens/focuses the app
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((cs) => {
+      for (const c of cs) { if ('focus' in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow('./');
+    })
   );
 });
 
